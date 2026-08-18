@@ -53,3 +53,16 @@ actually cracked a captcha. Only solves are billed.
 
 A user-facing percentage (25/50/75/100) of the key's reported `max_concurrent`.
 It replaces a raw thread count.
+
+## Credit
+
+The work left in the dibycap key, counted in **solves**. Money is the secondary
+form of the same thing. Attempts do not consume credit; only solves do.
+
+## Low credit
+
+Credit under a fixed threshold. It is a warning only — it never blocks a run.
+
+## Out of credit
+
+Credit at zero. A run will not start, and a running run stops.
