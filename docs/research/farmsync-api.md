@@ -58,7 +58,7 @@ replaces all of it in ~11 s.
 
 | Measure | Count |
 |---|---|
-| devices | 81 (all `is_enabled`, all `client_running`) |
+| devices | 81, all `is_enabled` |
 | accounts returned by `/api/self/accounts` | **8,267** |
 | accounts with a `device_id` | 4,352 |
 | accounts with **no** device (unassigned) | 3,915 |
@@ -113,20 +113,47 @@ Today's filter is `enabled and not running`. On this account, right now:
 | of those, on a device whose client is not running | **0** |
 | of those, with no `device_id` | 0 |
 
-### On the reported offline-device bug
+### On the reported offline-device bug - CONFIRMED
 
-The user reports that accounts on offline or shut-down devices still get solved,
-wasting credit. The signal for it is `device.client_running`, which today's code
-never reads - it only checks `device.is_enabled`.
+**Correction to an earlier draft of this file:** `client_running` is **not** a
+boolean. It is the string `"LDPlayer"` on all 81 devices - the emulator name.
+An earlier pass treated it as `true`/`false` and concluded there was no waste;
+that conclusion came from every non-empty string being truthy. **farmsync exposes
+no boolean device-liveness field.**
 
-**The bug is real in the code, but it could not be measured today: all 81 devices
-were enabled and running at probe time, so the waste was 0.** The fix should still
-land, and the numbers should be re-measured when devices are actually down.
+The user named Devices **15, 51, 60 and 40** as offline. Re-probed against that:
 
-One caveat found while checking: **3 of 81 devices had `last_updated` older than
-5 minutes** while still reporting `client_running: true`. A device that stopped
-reporting can keep a stale `true`, so freshness of `last_updated` is a better
-liveness test than `client_running` alone.
+| Signal | Catches the dead devices? |
+|---|---|
+| `device.active_accounts == 0` | **yes, all six** |
+| `device.last_updated` stale | only 3 of 6 |
+
+Today's filter (`account.enabled and not account.running`) selected **310**
+accounts. The six largest contributors are exactly the devices with
+`active_accounts == 0`:
+
+| Device | Picked | Last reported | `active_accounts` |
+|---|---|---|---|
+| Device 15 | **60** (entire fleet) | 72 s ago | 0 |
+| Device 40 | **50** | **163.5 hours ago** | 0 |
+| Device 51 | 24 | 19.0 hours ago | 0 |
+| Device 49 | 19 | 48 s ago | 0 |
+| Device 78 | 15 | 80 s ago | 0 |
+| Device 60 | 9 | 28.4 hours ago | 0 |
+| **total** | **177** | | |
+
+**177 of 310 selected accounts - 57% - sit on machines with nothing running.**
+Every other device contributed 24 or fewer; most contributed 1-4.
+
+At `price_per_1k = 1.5` that is roughly **$0.27 of wasted attempts per round**,
+repeating every 60 s `round_delay`.
+
+Devices **49** and **78** were not on the user's offline list but show the same
+shape, as does **Device 15**, which the user *did* list: a **fresh heartbeat with
+zero active accounts**. So `last_updated` freshness does not imply the accounts
+are usable, and staleness alone misses 94 of the 177.
+
+`active_accounts == 0` is the stronger rule on this sample. Tracked in issue #14.
 
 ## dibycap `/balance` for cross-reference
 
