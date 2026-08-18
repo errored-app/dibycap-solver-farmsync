@@ -16,6 +16,7 @@ from ..errors import ErrorCode
 FOR_CODE: dict[ErrorCode, str] = {
     ErrorCode.BAD_API_KEY: "That dibycap key was not accepted. Check it and paste it again.",
     ErrorCode.NO_CREDIT: "You are out of credit. Top up to keep going.",
+    ErrorCode.SERVICE_PAUSED: "The captcha service is paused. Your key is fine. Try again later.",
     ErrorCode.BAD_FARM_TOKEN: "That farmsync token was not accepted. Check it and paste it again.",
     ErrorCode.NO_INTERNET: "Could not reach the internet. Check your connection and try again.",
     ErrorCode.UNKNOWN: "Something went wrong. Try again in a moment.",

@@ -109,7 +109,7 @@ def test_a_failed_solve_keeps_the_raw_dibycap_code() -> None:
         ("invalid_api_key", ErrorCode.BAD_API_KEY),
         ("key_disabled", ErrorCode.BAD_API_KEY),
         ("key_expired", ErrorCode.BAD_API_KEY),
-        ("service_paused", ErrorCode.BAD_API_KEY),
+        ("service_paused", ErrorCode.SERVICE_PAUSED),
         ("insufficient_balance", ErrorCode.NO_CREDIT),
     ],
 )

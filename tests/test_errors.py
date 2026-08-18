@@ -10,6 +10,7 @@ def test_every_stable_code_exists() -> None:
     assert {code.value for code in ErrorCode} == {
         "BAD_API_KEY",
         "NO_CREDIT",
+        "SERVICE_PAUSED",
         "BAD_FARM_TOKEN",
         "NO_INTERNET",
         "UNKNOWN",

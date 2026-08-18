@@ -32,7 +32,7 @@ TERMINAL_CODES: dict[str, ErrorCode] = {
     "insufficient_balance": ErrorCode.NO_CREDIT,
     "key_disabled": ErrorCode.BAD_API_KEY,
     "key_expired": ErrorCode.BAD_API_KEY,
-    "service_paused": ErrorCode.BAD_API_KEY,
+    "service_paused": ErrorCode.SERVICE_PAUSED,
 }
 
 # Failures about the account, not the key. They end the run for nobody, but a

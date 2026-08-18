@@ -564,9 +564,14 @@ here — not an accident of the liveness filter.
 `keys.py` and `updater.py` raise from it too.
 
 Typed errors carry a short **stable code**: `BAD_API_KEY`, `NO_CREDIT`,
-`BAD_FARM_TOKEN`, `NO_INTERNET`, `UNKNOWN`. Today's `SolverError` /
-`FarmsyncError` / `RobloxError` collapse into this — `RobloxError` was never
-raised anywhere.
+`SERVICE_PAUSED`, `BAD_FARM_TOKEN`, `NO_INTERNET`, `UNKNOWN`. Today's
+`SolverError` / `FarmsyncError` / `RobloxError` collapse into this —
+`RobloxError` was never raised anywhere.
+
+`SERVICE_PAUSED` was added after the first live round (#23): `/balance` answered
+normally while every `/createTask` came back `service_paused`. It is terminal
+like a bad key, but the key is not the problem, and `BAD_API_KEY`'s sentence
+sends the user to re-paste a key that works.
 
 The terminal-error list in `src/roblox.py` becomes **codes, not substring matching
 on `str(e)`**.
