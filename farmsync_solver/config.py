@@ -16,7 +16,7 @@ import json
 import logging
 import os
 from ctypes import wintypes
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -93,6 +93,33 @@ def save(config: Config, path: Path | None = None) -> None:
     with temporary.open("w", encoding="utf-8") as handle:
         handle.write(body)
     temporary.replace(target)
+
+
+def save_speed(percent: int, path: Path | None = None) -> Config:
+    """Spec 4.3: save one of the four Speed choices, keeping the keys as they are.
+
+    The file is re-read rather than taken from a caller's copy: only the speed is
+    changing, and the file is the newest word on the keys.
+    """
+    if percent not in SPEED_CHOICES:
+        raise ValueError(f"speed_percent={percent!r} is not one of {SPEED_CHOICES}")
+
+    saved = replace(load(path), speed_percent=percent)
+    save(saved, path)
+    _log.info("speed saved percent=%s", percent)
+    return saved
+
+
+def forget_keys(path: Path | None = None) -> Config:
+    """Spec 4.3: drop both keys, keep the speed, and answer with what survives.
+
+    A rewrite rather than a delete: the file keeps the speed the user picked, and
+    the app lands on Setup because the keys are gone, not because a file is.
+    """
+    remaining = Config(speed_percent=load(path).speed_percent)
+    save(remaining, path)
+    _log.info("keys forgotten")
+    return remaining
 
 
 def _target(path: Path | None) -> Path:

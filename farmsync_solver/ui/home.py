@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 from nicegui import run, ui
 
@@ -59,12 +59,20 @@ def read_credit(api_key: str, check_key: KeyCheck | None = None) -> Credit:
     return Credit(header=messages.credit_header(balance), low=credit.is_low(balance))
 
 
-def build(api_key: str) -> None:
-    """Draw the screen and start the background re-check.
+def build(api_key: str, on_settings: Callable[[], None]) -> None:
+    """Draw the screen, start the background re-check, and wire the gear.
 
-    Takes the key, not the config: the screen reads one value, and spec 9.2 asks
-    the same of the engine seam for the same reason.
+    Takes the key, not the config: the screen reads one stored value, and spec
+    9.2 asks the same of the engine seam for the same reason.
     """
+    # The gear sits on its own row so it stays top-right of the whole screen,
+    # not inside the centred column below it.
+    with ui.row().classes("w-full justify-end p-2"):
+        gear = ui.button(icon="settings").props("flat round").mark("settings-gear")
+        with gear:  # inside the button, or the tooltip covers the whole row
+            ui.tooltip(messages.HOME_SETTINGS)
+        gear.on("click", on_settings)
+
     with ui.column().classes("w-full items-center gap-6 p-8"):
         header = ui.label(messages.HOME_CHECKING).classes("text-2xl font-bold").mark("credit-header")
         error_line = ui.label().classes("text-sm text-red-600")

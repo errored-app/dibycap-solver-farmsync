@@ -1,5 +1,174 @@
-"""The Settings screen: speed, diagnostics, updates.
+"""The Settings screen: keys, Speed, Forget my keys, version.
 
-Not implemented yet.
+Spec 4.3. There is no About screen; the version lives at the bottom of this one.
+Check for updates, Copy diagnostics and Open log folder are the same screen's
+rows but a later ticket's work, and they land beside these.
+
+Speed is the only face the thread count has (spec 5.4). The percentage is saved;
+the derived thread count is never written down and never shown.
+
+Spec 5.7 locks the keys and Speed while a run is going, but leaves the screen
+open and readable: blocking the whole screen would teach the user the app is
+stuck.
+
+The key boxes open **empty**. The saved keys are never sent to the page: they
+spend real money (spec 10), and a box the user must fill says "replace" more
+plainly than a masked box full of dots.
 """
 from __future__ import annotations
+
+import logging
+from typing import Callable
+
+from nicegui import ui
+
+from .. import config
+from .._version import APP_NAME, VERSION
+from ..errors import AppError
+from . import messages, setup
+
+GOOD_COLOUR = "text-green-700"
+BAD_COLOUR = "text-red-600"
+
+_log = logging.getLogger(__name__)
+
+
+def is_running() -> bool:
+    """Whether a run is going.
+
+    A seam, not a feature: the engine of spec 9.2 lands in a later ticket, and
+    until it does the answer is always no.
+    """
+    return False
+
+
+def build(
+    speed_percent: int, on_back: Callable[[], None], on_forget: Callable[[], None]
+) -> None:
+    """Draw the screen.
+
+    Takes the speed, not the config: the screen reads one stored value, and the
+    keys it writes are typed in, never read back out.
+
+    `on_back` returns to Home. `on_forget` is called once the keys are gone, and
+    sends the app to Setup.
+    """
+    locked = is_running()
+
+    with ui.column().classes("w-full items-stretch gap-6 p-8"):
+        with ui.row().classes("items-center gap-3"):
+            back = ui.button(icon="arrow_back").props("flat round").mark("settings-back")
+            with back:  # inside the button, or the tooltip covers the whole row
+                ui.tooltip(messages.SETTINGS_BACK)
+            back.on("click", on_back)
+            ui.label(messages.SETTINGS_TITLE).classes("text-2xl font-bold")
+
+        if locked:
+            ui.label(messages.SETTINGS_LOCKED).classes("text-sm text-orange-600")
+
+        _keys_section(on_forget, locked)
+        _speed_section(speed_percent, locked)
+
+        ui.label(f"{APP_NAME} {VERSION}").classes("text-xs text-gray-500")
+
+
+def _keys_section(on_forget: Callable[[], None], locked: bool) -> None:
+    """The two key boxes, their one save button, and Forget my keys."""
+    ui.label(messages.SETTINGS_KEYS_TITLE).classes("text-lg font-semibold")
+    ui.label(messages.SETTINGS_KEYS_NOTE).classes("text-sm text-gray-500")
+
+    api_key_box = (
+        ui.input(label=messages.SETUP_API_KEY_LABEL, password=True)
+        .props("outlined")
+        .mark("settings-api-key")
+    )
+    farm_token_box = (
+        ui.input(label=messages.SETUP_FARM_TOKEN_LABEL, password=True)
+        .props("outlined")
+        .mark("settings-farm-token")
+    )
+    note = ui.label().classes("text-sm text-green-700")
+
+    with ui.row().classes("items-center gap-3"):
+        save = ui.button(messages.SETTINGS_SAVE_KEYS)
+        forget = ui.button(messages.SETTINGS_FORGET).props("outline color=negative")
+
+    async def press_save() -> None:
+        result = await setup.check_and_save(api_key_box, farm_token_box, save, note)
+        if result is None:
+            return
+        note.set_text(f"{messages.SETTINGS_SAVED} {result.note}" if result.saved else "")
+
+    # Built once, beside the button that opens it: a dialog created on every
+    # press would pile up a new copy on the page each time (spec 4.4).
+    confirm = _forget_dialog(on_forget)
+    save.on("click", press_save)
+    forget.on("click", confirm.open)
+
+    for element in (api_key_box, farm_token_box, save, forget):
+        element.set_enabled(not locked)
+
+
+def _speed_section(speed_percent: int, locked: bool) -> None:
+    """The four Speed buttons. A percentage only — no raw thread number."""
+    ui.label(messages.SETTINGS_SPEED_LABEL).classes("text-lg font-semibold")
+    ui.label(messages.SETTINGS_SPEED_HELP).classes("text-sm text-gray-500")
+
+    choices = {percent: messages.speed_choice(percent) for percent in config.SPEED_CHOICES}
+    speed = ui.toggle(choices, value=speed_percent).mark("speed-toggle")
+    note = ui.label().classes("text-sm").mark("speed-note")
+
+    def pick() -> None:
+        picked = speed.value
+        if picked not in config.SPEED_CHOICES:  # a cleared toggle picks nothing
+            return
+        try:
+            config.save_speed(picked)
+        except Exception as error:  # a full disk must not make the click do nothing
+            _say(note, _failure_text(error), good=False)
+            return
+        _say(note, messages.SETTINGS_SAVED, good=True)
+
+    speed.on_value_change(pick)
+    speed.set_enabled(not locked)
+
+
+def _forget_dialog(on_forget: Callable[[], None]) -> ui.dialog:
+    """Ask before deleting. The keys cost money to get wrong."""
+    with ui.dialog().mark("forget-dialog") as dialog, ui.card().classes("items-stretch gap-3"):
+        ui.label(messages.SETTINGS_FORGET_QUESTION).classes("text-lg font-semibold")
+        ui.label(messages.SETTINGS_FORGET_NOTE).classes("text-sm text-gray-500")
+        failure = ui.label().classes("text-sm text-red-600")
+        with ui.row().classes("justify-end gap-2"):
+            ui.button(messages.SETTINGS_CANCEL).props("flat").on("click", dialog.close)
+            confirm = ui.button(messages.SETTINGS_FORGET_YES).props("color=negative")
+
+    def forget() -> None:
+        # A write that failed must leave the user here, still holding their keys,
+        # rather than drop them on Setup with the file untouched.
+        try:
+            config.forget_keys()
+        except Exception as error:
+            failure.set_text(_failure_text(error))
+            return
+        dialog.close()
+        on_forget()
+
+    confirm.on("click", forget)
+    return dialog
+
+
+def _say(note: ui.label, text: str, good: bool) -> None:
+    """Green for a save that landed, red for one that did not."""
+    note.set_text(text)
+    note.classes(
+        add=GOOD_COLOUR if good else BAD_COLOUR,
+        remove=BAD_COLOUR if good else GOOD_COLOUR,
+    )
+
+
+def _failure_text(error: Exception) -> str:
+    """A failed write, in the one place user-facing wording comes from."""
+    code = AppError.from_exception(error).code
+    _log.warning("settings write failed code=%s", code.value, exc_info=error)
+    return messages.for_code(code)

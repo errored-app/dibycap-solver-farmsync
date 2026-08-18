@@ -120,3 +120,72 @@ def test_the_thread_count_is_derived_from_the_observed_65(speed: int, expected: 
 
 def test_the_thread_count_is_never_zero() -> None:
     assert config.Config(speed_percent=25).threads(1) == 1
+
+
+# --- Speed and Forget my keys (spec 4.3, 5.4) --------------------------------
+
+
+@pytest.fixture
+def saved_pair(config_file: Path) -> Path:
+    config.save(config.Config(api_key="abc", farm_token="xyz"), config_file)
+    return config_file
+
+
+def test_speed_offers_four_choices_and_defaults_to_the_top() -> None:
+    assert config.SPEED_CHOICES == (25, 50, 75, 100)
+    assert config.DEFAULT_SPEED_PERCENT == 100
+
+
+def test_a_new_speed_is_saved_and_the_keys_stay(saved_pair: Path) -> None:
+    saved = config.save_speed(50, saved_pair)
+
+    assert saved.speed_percent == 50
+    assert config.load(saved_pair).speed_percent == 50
+    assert config.load(saved_pair).api_key == "abc"
+
+
+def test_a_speed_outside_the_four_choices_is_refused(saved_pair: Path) -> None:
+    with pytest.raises(ValueError):
+        config.save_speed(60, saved_pair)
+
+    assert config.load(saved_pair).speed_percent == 100
+
+
+def test_the_thread_count_is_stored_nowhere(saved_pair: Path) -> None:
+    config.save_speed(25, saved_pair)
+    written = json.loads(saved_pair.read_text(encoding="utf-8"))
+
+    assert set(written) == {"version", "api_key", "farm_token", "speed_percent"}
+
+
+@pytest.mark.parametrize(("speed", "expected"), [(25, 16), (50, 32), (75, 48), (100, 65)])
+def test_the_thread_count_is_derived_from_speed(speed: int, expected: int) -> None:
+    assert config.Config(speed_percent=speed).threads(65) == expected
+
+
+def test_the_thread_count_is_never_below_one() -> None:
+    assert config.Config(speed_percent=25).threads(1) == 1
+
+
+def test_forget_my_keys_clears_both_keys_and_keeps_the_speed(config_file: Path) -> None:
+    config.save(config.Config(api_key="abc", farm_token="xyz", speed_percent=25), config_file)
+
+    remaining = config.forget_keys(config_file)
+
+    assert remaining.api_key == ""
+    assert remaining.farm_token == ""
+    assert remaining.speed_percent == 25
+    assert remaining.is_ready is False
+    assert config.load(config_file).is_ready is False
+
+
+def test_forget_my_keys_leaves_no_readable_key_in_the_file(saved_pair: Path) -> None:
+    config.forget_keys(saved_pair)
+    text = saved_pair.read_text(encoding="utf-8")
+
+    assert "abc" not in text
+    assert "xyz" not in text
+
+
+def test_forget_my_keys_on_a_missing_file_is_quiet(tmp_path: Path) -> None:
+    assert config.forget_keys(tmp_path / "gone.json").is_ready is False

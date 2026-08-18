@@ -32,9 +32,30 @@ SETUP_BUTTON = "Check and save"
 SETUP_CHECKING = "Checking your keys…"
 
 HOME_START = "Start"
+HOME_SETTINGS = "Settings"
 HOME_CHECKING = "Checking your credit…"
 HOME_NO_RUNS = "No runs yet."
 CREDIT_UNKNOWN = "Credit unknown"
+
+SETTINGS_TITLE = "Settings"
+SETTINGS_BACK = "Back to Home"
+SETTINGS_KEYS_TITLE = "Your keys"
+SETTINGS_KEYS_NOTE = "Your saved keys are hidden. Paste both again to replace them."
+SETTINGS_SAVE_KEYS = "Check and save keys"
+SETTINGS_SAVED = "Saved."
+SETTINGS_SPEED_LABEL = "Speed"
+SETTINGS_SPEED_HELP = "Higher speed works on more accounts at once."
+SETTINGS_LOCKED = "Stop the run to change these."
+SETTINGS_FORGET = "Forget my keys"
+SETTINGS_FORGET_QUESTION = "Delete your saved keys?"
+SETTINGS_FORGET_NOTE = "You will have to paste them again next time."
+SETTINGS_FORGET_YES = "Forget them"
+SETTINGS_CANCEL = "Cancel"
+
+
+def speed_choice(percent: int) -> str:
+    """The label on one Speed button. A percentage, never a thread count."""
+    return f"{percent}%"
 
 
 def for_code(code: ErrorCode | None) -> str:

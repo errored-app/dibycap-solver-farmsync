@@ -87,29 +87,46 @@ def build(on_done: Callable[[], None]) -> None:
         button = ui.button(messages.SETUP_BUTTON).props("size=lg")
 
         async def press() -> None:
-            # Built once, only text and colour change afterwards (spec 4.4).
-            button.disable()
-            note.set_text(messages.SETUP_CHECKING)
-            try:
-                # In a worker thread: both checks are blocking network calls, and
-                # on the event loop they would freeze the window and swallow the
-                # "Checking your keys..." line they are supposed to explain.
-                result = await run.io_bound(
-                    verify_and_save, api_key_box.value or "", farm_token_box.value or ""
-                )
-            finally:
-                button.enable()
-            if result is None:  # NiceGUI answers None when it cancels the call
+            result = await check_and_save(api_key_box, farm_token_box, button, note)
+            if result is None:
                 return
-
-            _mark(api_key_box, result.api_key_error)
-            _mark(farm_token_box, result.farm_token_error)
             note.set_text(result.note)
             if result.saved:
                 # A short pause, so the credit line is read before Home replaces it.
                 ui.timer(SUCCESS_PAUSE_SECONDS, on_done, once=True)
 
         button.on("click", press)
+
+
+async def check_and_save(
+    api_key_box: ui.input,
+    farm_token_box: ui.input,
+    button: ui.button,
+    note: ui.label,
+) -> SetupResult | None:
+    """Check both boxes, save when both pass, and put any refusal on its own box.
+
+    Shared with the Settings screen: a key edited there must be checked exactly
+    the way a key pasted here is. None means NiceGUI cancelled the call.
+    """
+    # Built once, only text and colour change afterwards (spec 4.4).
+    button.disable()
+    note.set_text(messages.SETUP_CHECKING)
+    try:
+        # In a worker thread: both checks are blocking network calls, and on the
+        # event loop they would freeze the window and swallow the
+        # "Checking your keys..." line they are supposed to explain.
+        result = await run.io_bound(
+            verify_and_save, api_key_box.value or "", farm_token_box.value or ""
+        )
+    finally:
+        button.enable()
+    if result is None:  # NiceGUI answers None when it cancels the call
+        return None
+
+    _mark(api_key_box, result.api_key_error)
+    _mark(farm_token_box, result.farm_token_error)
+    return result
 
 
 def _mark(box: ui.input, error: str) -> None:
