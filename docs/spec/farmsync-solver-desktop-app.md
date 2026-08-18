@@ -572,7 +572,13 @@ Typed errors carry a short **stable code**: `BAD_API_KEY`, `NO_CREDIT`,
 `SERVICE_PAUSED` was added after the first live round (#23): `/balance` answered
 normally while every `/createTask` came back `service_paused`. It is terminal
 like a bad key, but the key is not the problem, and `BAD_API_KEY`'s sentence
-sends the user to re-paste a key that works.
+sends the user to re-paste a key that works. Growing the set from five codes to
+six has an ADR behind it
+([ADR 0002](../adr/0002-a-paused-solve-service-gets-its-own-code.md)), settled in
+[#30](https://github.com/errored-app/dibycap-solver-farmsync/issues/30).
+
+`key_disabled` and `key_expired` stay on `BAD_API_KEY`. They are real key faults,
+so the sentence is imprecise about the fix, not wrong about the cause.
 
 The terminal-error list in `src/roblox.py` becomes **codes, not substring matching
 on `str(e)`**.
@@ -808,6 +814,7 @@ watch.
 | 6 | Account eligibility | [#14](https://github.com/errored-app/dibycap-solver-farmsync/issues/14) |
 | 7 | Credit and limits | [#15](https://github.com/errored-app/dibycap-solver-farmsync/issues/15) |
 | 8 | Logging and support | [#16](https://github.com/errored-app/dibycap-solver-farmsync/issues/16) |
+| 5.5, 9.7 | A paused solve service is not a bad key | [#30](https://github.com/errored-app/dibycap-solver-farmsync/issues/30) |
 
 Prototype and research artifacts live on throwaway branches:
 `prototype/run-view`, `research/nicegui-pyinstaller`, `research/key-validation`,

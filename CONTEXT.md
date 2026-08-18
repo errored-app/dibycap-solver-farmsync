@@ -40,9 +40,11 @@ are already paid for. The opposite, dropping work at once, is not used.
 
 ## Terminal error
 
-A solver error about the **key**, not the account — for example an invalid key,
-no balance, or a disabled key. The first terminal error ends the run, because
-every later account would fail the same way.
+A solver error that is not about the **account** — for example an invalid key,
+no balance, or a paused solve service. The first terminal error ends the run,
+because every later account would fail the same way. Most terminal errors are
+about the key; a paused service is not, and says so
+([ADR 0002](docs/adr/0002-a-paused-solve-service-gets-its-own-code.md)).
 
 ## Attempt vs solve
 
