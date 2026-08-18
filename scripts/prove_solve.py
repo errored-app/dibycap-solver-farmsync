@@ -4,7 +4,10 @@ Spec 5.5 and 9.4: this is the worker body on its own, before the round loop
 exists. It proves that one account produces joined / solved / failed plus the raw
 dibycap code, and that a terminal error stops instead of retrying.
 
-    uv run python scripts/prove_solve.py
+    uv run python -m scripts.prove_solve
+
+Run it as a module, not as a file: the project is not installed (`package = false`),
+so only `-m` puts the repo root on the import path.
 
 The keys come from the saved app config, or from `DIBYCAP_KEY` and
 `FARMSYNC_TOKEN` when those are set. Nothing printed can carry a cookie or a key.

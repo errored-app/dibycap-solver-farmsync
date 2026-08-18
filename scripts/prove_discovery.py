@@ -5,7 +5,10 @@ Spec 6.3 and 9.5: two bulk calls take about 12 s, and the blocklist left 132 of
 maintainer tool, not part of the app, so it is the one place that reads a token
 from the environment.
 
-    uv run python scripts/prove_discovery.py
+    uv run python -m scripts.prove_discovery
+
+Run it as a module, not as a file: the project is not installed (`package = false`),
+so only `-m` puts the repo root on the import path.
 
 The token comes from `FARMSYNC_TOKEN`, or from the saved app config when that
 variable is not set. Nothing printed can carry a cookie or a token.
