@@ -16,4 +16,5 @@ env/
 .DS_Store
 Thumbs.db
 
-.claude
+# Agent scratch
+.claude/
