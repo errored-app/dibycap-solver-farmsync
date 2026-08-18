@@ -1,5 +1,47 @@
 """The one error-code -> friendly-sentence table.
 
-Not implemented yet.
+Spec 9.7: every word the user reads about a failure comes from here. The engine,
+the key checks and the updater hold stable codes only. Rules for the wording:
+
+- plain words, no jargon, no error code, no key value;
+- say what to do next where there is something to do.
 """
 from __future__ import annotations
+
+from typing import Any
+
+from ..errors import ErrorCode
+
+FOR_CODE: dict[ErrorCode, str] = {
+    ErrorCode.BAD_API_KEY: "That dibycap key was not accepted. Check it and paste it again.",
+    ErrorCode.NO_CREDIT: "You are out of credit. Top up to keep going.",
+    ErrorCode.BAD_FARM_TOKEN: "That farmsync token was not accepted. Check it and paste it again.",
+    ErrorCode.NO_INTERNET: "Could not reach the internet. Check your connection and try again.",
+    ErrorCode.UNKNOWN: "Something went wrong. Try again in a moment.",
+}
+
+NEEDS_API_KEY = "Paste your dibycap key here."
+NEEDS_FARM_TOKEN = "Paste your farmsync token here."
+
+SETUP_TITLE = "Welcome"
+SETUP_INTRO = "Paste your two keys. The app checks them before it saves them."
+SETUP_API_KEY_LABEL = "dibycap key"
+SETUP_FARM_TOKEN_LABEL = "farmsync token"
+SETUP_BUTTON = "Check and save"
+SETUP_CHECKING = "Checking your keys…"
+
+
+def for_code(code: ErrorCode | None) -> str:
+    """The sentence for a code. An unnamed failure reads as an unknown one."""
+    return FOR_CODE.get(code, FOR_CODE[ErrorCode.UNKNOWN]) if code else FOR_CODE[ErrorCode.UNKNOWN]
+
+
+def key_works(balance: dict[str, Any]) -> str:
+    """The inline success line of spec 4.1, credit in solves."""
+    return f"Key works — {solves(balance):,} captchas left"
+
+
+def solves(balance: dict[str, Any]) -> int:
+    """`estimated_solves` as a whole number, missing or odd values reading as 0."""
+    value = balance.get("estimated_solves")
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0

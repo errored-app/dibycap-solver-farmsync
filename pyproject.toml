@@ -12,10 +12,13 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
+    "pytest-asyncio>=0.23",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = ["nicegui_main_file: the entry file the NiceGUI user fixture loads"]
 pythonpath = ["."]
 
 [tool.uv]

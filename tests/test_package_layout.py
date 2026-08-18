@@ -59,12 +59,17 @@ def test_no_module_reads_a_file_at_import_time(
         raise AssertionError(f"{module_name} read {args[:1]} at import time")
 
     importlib.import_module(module_name)  # warm the third-party imports first
-    for name in list(sys.modules):
-        if name.startswith("farmsync_solver"):
-            del sys.modules[name]
+    # Re-importing gives every later test a second copy of these modules, and a
+    # patch on one copy would not be seen by the other. Put the first copies back.
+    original = {n: m for n, m in sys.modules.items() if n.startswith("farmsync_solver")}
+    for name in original:
+        del sys.modules[name]
 
     monkeypatch.setattr(builtins, "open", refuse)
     monkeypatch.setattr(Path, "read_text", refuse)
     monkeypatch.setattr(Path, "read_bytes", refuse)
 
-    importlib.import_module(module_name)
+    try:
+        importlib.import_module(module_name)
+    finally:
+        sys.modules.update(original)
