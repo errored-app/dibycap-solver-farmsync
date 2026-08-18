@@ -42,10 +42,6 @@ class Config:
         """True when both keys are present, so Setup can be skipped."""
         return bool(self.api_key and self.farm_token)
 
-    def threads(self, max_concurrent: int) -> int:
-        """Spec 5.4: floor(max_concurrent x speed_percent / 100), minimum 1."""
-        return max(1, max_concurrent * self.speed_percent // 100)
-
 
 def default_path() -> Path:
     r"""`%APPDATA%\FarmsyncSolver\config.json`, per Windows user."""

@@ -18,17 +18,31 @@ class FakeResponse:
         return self._payload
 
 
-class Queue:
-    """Answers a different response on each call, then holds the last one.
+class Script:
+    """Answers a different thing on each call, then holds the last one.
 
-    For a call that polls: `solve` asks `/getTask` until the task is finished.
+    An answer that is an exception is raised instead of returned, so one script
+    covers "works, then stops working" and "fails twice, then works".
     """
 
-    def __init__(self, *responses: FakeResponse) -> None:
-        self._responses = list(responses)
+    def __init__(self, *answers: Any) -> None:
+        self._answers = list(answers)
+        self.calls = 0
 
-    def __call__(self) -> FakeResponse:
-        return self._responses.pop(0) if len(self._responses) > 1 else self._responses[0]
+    def __call__(self) -> Any:
+        self.calls += 1
+        answer = self._answers[min(self.calls, len(self._answers)) - 1]
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+
+class Queue(Script):
+    """The same replay, named for the call that polls.
+
+    `solve` asks `/getTask` until the task is finished, so its script is a queue
+    of responses rather than a list of outcomes.
+    """
 
 
 class FakeSession:

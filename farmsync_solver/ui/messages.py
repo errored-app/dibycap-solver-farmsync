@@ -37,6 +37,15 @@ HOME_CHECKING = "Checking your credit…"
 HOME_NO_RUNS = "No runs yet."
 CREDIT_UNKNOWN = "Credit unknown"
 
+RUN_STARTING = "Getting ready…"
+RUN_DISCOVERING = "Finding accounts…"
+RUN_SOLVING = "Checking accounts…"
+RUN_RESTING = "Waiting for the next round."
+RUN_STOPPING = "Stopping. Finishing the accounts already started…"
+RUN_STOPPED = "Stopped."
+RUN_NO_ACCOUNTS = "No accounts to check this round."
+RUN_NO_FARMSYNC = "Could not reach farmsync. Trying again in a minute."
+
 SETTINGS_TITLE = "Settings"
 SETTINGS_BACK = "Back to Home"
 SETTINGS_KEYS_TITLE = "Your keys"
@@ -56,6 +65,16 @@ SETTINGS_CANCEL = "Cancel"
 def speed_choice(percent: int) -> str:
     """The label on one Speed button. A percentage, never a thread count."""
     return f"{percent}%"
+
+
+def run_progress(done: int, total: int) -> str:
+    """The determinate progress line of spec 4.2: "87 of 132"."""
+    return f"{done:,} of {total:,}"
+
+
+def run_rest(seconds_left: int) -> str:
+    """The countdown line of spec 4.2, shown while the run rests."""
+    return f"Next round in {max(0, seconds_left)}s"
 
 
 def for_code(code: ErrorCode | None) -> str:

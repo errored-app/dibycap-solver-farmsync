@@ -47,3 +47,25 @@ def test_below_the_threshold_is_low() -> None:
 
 def test_the_threshold_itself_is_not_low() -> None:
     assert credit.is_low({"estimated_solves": credit.LOW_SOLVES}) is False
+
+
+# --- the thread count (spec 5.4) --------------------------------------------
+
+
+def test_max_concurrent_is_read_from_the_payload() -> None:
+    assert credit.max_concurrent(LIVE) == 65
+
+
+@pytest.mark.parametrize("odd", [{}, {"max_concurrent": None}, {"max_concurrent": True}])
+def test_a_payload_with_no_max_concurrent_reads_as_zero(odd: dict[str, object]) -> None:
+    """Zero is not a thread count; it is what makes the run refuse to start."""
+    assert credit.max_concurrent(odd) == 0
+
+
+@pytest.mark.parametrize(("speed", "expected"), [(25, 16), (50, 32), (75, 48), (100, 65)])
+def test_the_thread_count_is_derived_from_the_observed_65(speed: int, expected: int) -> None:
+    assert credit.threads(credit.max_concurrent(LIVE), speed) == expected
+
+
+def test_the_thread_count_is_never_below_one() -> None:
+    assert credit.threads(1, 25) == 1

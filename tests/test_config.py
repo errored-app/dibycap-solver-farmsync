@@ -110,18 +110,6 @@ def test_a_silly_speed_falls_back_to_the_default(config_file: Path) -> None:
     assert config.load(config_file).speed_percent == config.DEFAULT_SPEED_PERCENT
 
 
-@pytest.mark.parametrize(
-    ("speed", "expected"),
-    [(25, 16), (50, 32), (75, 48), (100, 65)],
-)
-def test_the_thread_count_is_derived_from_the_observed_65(speed: int, expected: int) -> None:
-    assert config.Config(speed_percent=speed).threads(65) == expected
-
-
-def test_the_thread_count_is_never_zero() -> None:
-    assert config.Config(speed_percent=25).threads(1) == 1
-
-
 # --- Speed and Forget my keys (spec 4.3, 5.4) --------------------------------
 
 
@@ -156,15 +144,6 @@ def test_the_thread_count_is_stored_nowhere(saved_pair: Path) -> None:
     written = json.loads(saved_pair.read_text(encoding="utf-8"))
 
     assert set(written) == {"version", "api_key", "farm_token", "speed_percent"}
-
-
-@pytest.mark.parametrize(("speed", "expected"), [(25, 16), (50, 32), (75, 48), (100, 65)])
-def test_the_thread_count_is_derived_from_speed(speed: int, expected: int) -> None:
-    assert config.Config(speed_percent=speed).threads(65) == expected
-
-
-def test_the_thread_count_is_never_below_one() -> None:
-    assert config.Config(speed_percent=25).threads(1) == 1
 
 
 def test_forget_my_keys_clears_both_keys_and_keeps_the_speed(config_file: Path) -> None:
