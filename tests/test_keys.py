@@ -1,13 +1,13 @@
 """§9.3: two plain functions, outside the Engine, that Setup and Home call."""
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
 from farmsync_solver import keys
 from farmsync_solver.engine import dibycap, farmsync
 from farmsync_solver.errors import AppError, ErrorCode
+
+from fakes import FakeResponse, FakeSession
 
 BALANCE = {
     "success": True,
@@ -20,48 +20,11 @@ BALANCE = {
 }
 
 
-class FakeResponse:
-    """Stands in for a requests/curl_cffi response."""
-
-    def __init__(self, status_code: int = 200, payload: Any = None, text: str = "") -> None:
-        self.status_code = status_code
-        self._payload = payload
-        self.text = text
-
-    def json(self) -> Any:
-        if self._payload is None:
-            raise ValueError("not json")
-        return self._payload
-
-
-class FakeSession:
-    """Records the one call it is given and answers with a canned response."""
-
-    def __init__(self, response: FakeResponse | Exception) -> None:
-        self.response = response
-        self.headers: dict[str, str] = {}
-        self.calls: list[tuple[str, str]] = []
-        self.trust_env = True
-
-    def _answer(self, method: str, url: str) -> FakeResponse:
-        self.calls.append((method, url))
-        if isinstance(self.response, Exception):
-            raise self.response
-        return self.response
-
-    def post(self, url: str, **kwargs: Any) -> FakeResponse:
-        self.sent_headers = kwargs.get("headers", {})
-        return self._answer("POST", url)
-
-    def get(self, url: str, **kwargs: Any) -> FakeResponse:
-        return self._answer("GET", url)
-
-
 def test_the_key_check_asks_dibycap_for_the_balance() -> None:
     session = FakeSession(FakeResponse(payload=BALANCE))
     payload = dibycap.Dibycap("secret", session=session).balance()
 
-    assert session.calls == [("POST", "https://api.dibycap.com/balance")]
+    assert session.urls == ["https://api.dibycap.com/balance"]
     assert session.sent_headers["X-API-Key"] == "secret"
     assert payload == BALANCE
 
@@ -117,7 +80,7 @@ def test_the_token_check_asks_farmsync_for_the_devices() -> None:
     session = FakeSession(FakeResponse(payload=[{"id": 1}]))
     devices = farmsync.Farmsync("token", session=session).devices()
 
-    assert session.calls == [("GET", "https://api.farmsync.cloud/api/devices/")]
+    assert session.urls == ["https://api.farmsync.cloud/api/devices/"]
     assert session.headers["Authorization"] == "Bearer token"
     assert devices == [{"id": 1}]
 

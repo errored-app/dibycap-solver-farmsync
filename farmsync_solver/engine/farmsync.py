@@ -1,4 +1,4 @@
-"""Farmsync client: accounts(), devices().
+"""Farmsync client: accounts(), devices(), discover().
 
 One of the three files allowed to touch the network (spec 9.4).
 
@@ -12,6 +12,7 @@ import logging
 from typing import Any
 
 from ..errors import AppError, ErrorCode
+from .eligibility import eligible_accounts
 
 BASE_URL = "https://api.farmsync.cloud"
 TIMEOUT_SECONDS = 30
@@ -29,6 +30,36 @@ class Farmsync:
         self._session.headers["Accept-Encoding"] = "gzip"
         self._session.trust_env = False
 
+    def accounts(self) -> list[dict[str, Any]]:
+        """Every account on the token, in one call. Raises `AppError` on trouble."""
+        self._assert_gzip()
+        response = self._get("/api/self/accounts")
+
+        if response.status_code in REFUSED_STATUS:
+            raise AppError(ErrorCode.BAD_FARM_TOKEN, f"accounts http {response.status_code}")
+
+        accounts = _as_list(response)
+        _log.info("accounts ok count=%d", len(accounts))
+        return accounts
+
+    def discover(self) -> list[dict[str, Any]]:
+        """The eligible accounts for one round: two calls, then the blocklist.
+
+        Nothing is cached. The two calls cost about 12 s inside a ~72 s round,
+        and the payload goes stale quickly (spec 9.5).
+        """
+        accounts = self.accounts()
+        devices = self.devices()
+
+        eligible = eligible_accounts(accounts, devices)
+        _log.info(
+            "discovery eligible=%d of=%d devices=%d",
+            len(eligible),
+            len(accounts),
+            len(devices),
+        )
+        return eligible
+
     def devices(self) -> list[dict[str, Any]]:
         """Every device on the account. Raises `AppError` on any trouble."""
         response = self._get("/api/devices/")
@@ -39,6 +70,17 @@ class Farmsync:
         devices = _as_list(response)
         _log.info("devices ok count=%d", len(devices))
         return devices
+
+    def _assert_gzip(self) -> None:
+        """Asserted, never assumed: uncompressed the body is 103 MB (spec 9.5).
+
+        The constructor sets the header, so this guards a later edit of the
+        session rather than today's code, and it refuses before sending: an
+        ungzipped accounts call does not finish. `UNKNOWN` because the fault is
+        ours, not the token's.
+        """
+        if "gzip" not in self._session.headers.get("Accept-Encoding", ""):
+            raise AppError(ErrorCode.UNKNOWN, "accounts call is not gzipped")
 
     def _get(self, path: str) -> Any:
         try:
