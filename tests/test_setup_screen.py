@@ -135,12 +135,15 @@ def test_a_saved_speed_is_kept(config_file: Path) -> None:
     assert config.load(config_file).speed_percent == 50
 
 
-def test_a_zero_credit_key_is_still_saved(config_file: Path) -> None:
-    def empty_key(key: str, session: Any | None = None) -> dict[str, Any]:
-        return {"success": True, "estimated_solves": 0}
-
+def test_a_key_with_no_credit_left_is_refused(config_file: Path) -> None:
     result = setup.verify_and_save(
-        "abc", "xyz", path=config_file, check_key=empty_key, check_token=good_token
+        "abc",
+        "xyz",
+        path=config_file,
+        check_key=refusing_key(ErrorCode.NO_CREDIT),
+        check_token=good_token,
     )
 
-    assert result.saved is True
+    assert result.saved is False
+    assert result.api_key_error == messages.for_code(ErrorCode.NO_CREDIT)
+    assert config_file.exists() is False

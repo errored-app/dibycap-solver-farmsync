@@ -10,11 +10,23 @@ from typing import Any
 
 from .engine.dibycap import Dibycap
 from .engine.farmsync import Farmsync
+from .errors import AppError, ErrorCode
 
 
 def check_api_key(key: str, session: Any | None = None) -> dict[str, Any]:
-    """The whole `/balance` payload: Setup, Speed and the header all read it."""
-    return Dibycap(key, session=session).balance()
+    """The whole `/balance` payload: Setup, Speed and the header all read it.
+
+    A key with no credit left is refused here, not in `Dibycap.balance`: spec 7
+    treats `estimated_solves == 0` as out of credit rather than trusting
+    `success`, while the header still has to be able to show the figure 0.
+    """
+    balance = Dibycap(key, session=session).balance()
+
+    solves = balance.get("estimated_solves")
+    if not isinstance(solves, int) or isinstance(solves, bool) or solves <= 0:
+        raise AppError(ErrorCode.NO_CREDIT, f"estimated_solves={solves!r}")
+
+    return balance
 
 
 def check_farm_token(token: str, session: Any | None = None) -> None:

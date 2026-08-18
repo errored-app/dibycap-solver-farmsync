@@ -158,3 +158,26 @@ def test_the_devices_call_asks_for_gzip() -> None:
     farmsync.Farmsync("token", session=session).devices()
 
     assert "gzip" in session.headers.get("Accept-Encoding", "")
+
+
+def test_a_key_with_no_credit_left_is_refused() -> None:
+    session = FakeSession(FakeResponse(payload={**BALANCE, "estimated_solves": 0}))
+
+    with pytest.raises(AppError) as caught:
+        keys.check_api_key("empty", session=session)
+    assert caught.value.code is ErrorCode.NO_CREDIT
+
+
+def test_a_missing_credit_figure_is_read_as_no_credit() -> None:
+    session = FakeSession(FakeResponse(payload={"success": True}))
+
+    with pytest.raises(AppError) as caught:
+        keys.check_api_key("odd", session=session)
+    assert caught.value.code is ErrorCode.NO_CREDIT
+
+
+def test_the_raw_balance_call_still_reports_zero_credit() -> None:
+    """The header must be able to show 0; only the key check refuses it."""
+    session = FakeSession(FakeResponse(payload={**BALANCE, "estimated_solves": 0}))
+
+    assert dibycap.Dibycap("empty", session=session).balance()["estimated_solves"] == 0
