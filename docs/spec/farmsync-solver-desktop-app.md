@@ -780,7 +780,6 @@ watch.
 2. **What a dead-device account costs when it *does* present a captcha is unmeasured.** Zero captchas were solved in the 8-minute sample, so the "attempts are free" finding has not been tested against a real solve on a dead device. (#14)
 3. **`--selftest` does not prove the window renders.** Only installing the pre-release does. (#11)
 4. **The exact farmsync failure taxonomy is thin** — wrong token, expired token, 5xx and no internet largely collapse into one generic error. Treat farmsync failures generically. (#3)
-5. **Two repo housekeeping items** from #5, neither a leak: the `.gitignore` line adding `.env` is still uncommitted, and `.claude/` is not ignored at all — a `git add -A` would commit agent worktree junk into a now-public repo.
 
 ---
 
