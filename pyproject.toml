@@ -1,0 +1,22 @@
+[project]
+name = "farmsync-solver"
+version = "0.0.0"
+description = "FarmsyncSolver Windows desktop app"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "nicegui[native]==3.16.0",
+    "requests>=2.31.0",
+    "curl_cffi>=0.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.uv]
+package = false
