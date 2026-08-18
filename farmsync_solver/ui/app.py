@@ -12,9 +12,10 @@ from __future__ import annotations
 import logging
 from typing import Callable
 
+from nicegui import app as ui_app
 from nicegui import ui
 
-from .. import config
+from .. import config, engine
 from .._version import APP_NAME, VERSION
 from . import home, settings, setup
 
@@ -66,7 +67,7 @@ def build_page() -> None:
             draw()
 
     def show_home() -> None:
-        swap(lambda: home.build(_config.api_key, show_settings))
+        swap(lambda: home.build(*_run_values(_config), show_settings))
 
     def show_settings() -> None:
         swap(lambda: settings.build(_config.speed_percent, back_to_home, forget_and_setup))
@@ -83,15 +84,31 @@ def build_page() -> None:
 
     with screen:
         if first_screen(_config) == "home":
-            home.build(_config.api_key, show_settings)
+            home.build(*_run_values(_config), show_settings)
         else:
             setup.build(back_to_home)
+
+
+def _run_values(current: config.Config) -> tuple[str, str, int]:
+    """The three plain values a run needs, in `Engine.start` order (spec 9.2)."""
+    return current.api_key, current.farm_token, current.speed_percent
+
+
+def _stop_run_on_shutdown() -> None:
+    """A closing window must not orphan work that is already paid for (spec 5.2).
+
+    NiceGUI does not bridge pywebview's vetoable `closing` event, so the window's
+    own X cannot raise the question of spec 5.3. What it can still do is the
+    polite stop, so no in-flight solve is dropped mid-flight.
+    """
+    engine.current().stop()
 
 
 def start_window() -> None:
     """Open the window and block until the user closes it."""
     load_config()
     register_pages()
+    ui_app.on_shutdown(_stop_run_on_shutdown)
     _log.info("window open version=%s screen=%s", VERSION, first_screen(_config))
     ui.run(
         native=True,

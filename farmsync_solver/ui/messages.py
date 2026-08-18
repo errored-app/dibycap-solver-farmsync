@@ -33,10 +33,27 @@ SETUP_BUTTON = "Check and save"
 SETUP_CHECKING = "Checking your keys…"
 
 HOME_START = "Start"
+HOME_STOP = "Stop"
+HOME_STOPPING = "Stopping…"
 HOME_SETTINGS = "Settings"
 HOME_CHECKING = "Checking your credit…"
 HOME_NO_RUNS = "No runs yet."
+HOME_DETAILS = "Details"
+HOME_FAILED_ONLY = "Show only the ones that failed."
+HOME_ROUND = "Round"
+HOME_JOINED = "Joined"
+HOME_SOLVED = "Captchas solved"
+HOME_FAILED = "Could not check"
 CREDIT_UNKNOWN = "Credit unknown"
+
+TABLE_STATUS = "Status"
+TABLE_ACCOUNT = "Account"
+TABLE_DETAIL = "Detail"
+TABLE_ELAPSED = "Elapsed"
+
+CLOSE_QUESTION = "A run is going. Stop it and close?"
+CLOSE_YES = "Stop and close"
+CLOSE_NO = "Keep running"
 
 RUN_STARTING = "Getting ready…"
 RUN_DISCOVERING = "Finding accounts…"
@@ -46,6 +63,16 @@ RUN_STOPPING = "Stopping. Finishing the accounts already started…"
 RUN_STOPPED = "Stopped."
 RUN_NO_ACCOUNTS = "No accounts to check this round."
 RUN_NO_FARMSYNC = "Could not reach farmsync. Trying again in a minute."
+RUN_CRASHED = "Something went wrong and the run stopped."
+
+# What one row's status badge reads (spec 4.2). Keyed by the *value* of
+# `engine.snapshot.Result`, not by the enum itself: `engine` imports this module,
+# so this module must not import `engine`.
+OUTCOME_WORD: dict[str, str] = {
+    "joined": "Joined",
+    "solved": "Captcha solved",
+    "failed": "Could not check",
+}
 
 SETTINGS_TITLE = "Settings"
 SETTINGS_BACK = "Back to Home"
@@ -66,6 +93,23 @@ SETTINGS_CANCEL = "Cancel"
 def speed_choice(percent: int) -> str:
     """The label on one Speed button. A percentage, never a thread count."""
     return f"{percent}%"
+
+
+def outcome_word(result: str) -> str:
+    """The words on one row's status badge. Takes `Result.value`, a plain string."""
+    return OUTCOME_WORD.get(result, "")
+
+
+def elapsed(seconds: float) -> str:
+    """How long ago a row landed, as the table's last column.
+
+    Seconds under a minute, then minutes and seconds. A round is ~72 s, so a row
+    older than an hour cannot happen and is not spelled out.
+    """
+    whole = max(0, int(seconds))
+    if whole < 60:
+        return f"{whole}s"
+    return f"{whole // 60}m {whole % 60}s"
 
 
 def run_progress(done: int, total: int) -> str:
@@ -90,4 +134,9 @@ def key_works(balance: dict[str, Any]) -> str:
 
 def credit_header(balance: dict[str, Any]) -> str:
     """The Home header of spec 4.2: solves first, money second."""
-    return f"{credit.solves(balance):,} captchas left (${credit.money(balance):,.2f})"
+    return credit_text(credit.solves(balance), credit.money(balance))
+
+
+def credit_text(solves: int, money: float) -> str:
+    """The same header from two plain numbers, which is what a snapshot carries."""
+    return f"{solves:,} captchas left (${money:,.2f})"

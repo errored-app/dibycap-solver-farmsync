@@ -329,7 +329,8 @@ def test_a_balance_with_no_max_concurrent_refuses_the_run(
     assert wait_for(lambda: engine.snapshot().state is RunState.IDLE)
 
     assert farm.calls == 0
-    assert engine.snapshot().headline == messages.for_code(ErrorCode.UNKNOWN)
+    assert engine.snapshot().headline == messages.RUN_CRASHED
+    assert engine.snapshot().message == "balance carried no max_concurrent"
 
 
 # --- what ends a run -------------------------------------------------------

@@ -22,7 +22,7 @@ from typing import Callable
 
 from nicegui import ui
 
-from .. import config
+from .. import config, engine
 from .._version import APP_NAME, VERSION
 from ..errors import AppError
 from . import messages, setup
@@ -34,12 +34,8 @@ _log = logging.getLogger(__name__)
 
 
 def is_running() -> bool:
-    """Whether a run is going.
-
-    A seam, not a feature: the engine of spec 9.2 lands in a later ticket, and
-    until it does the answer is always no.
-    """
-    return False
+    """Whether a run is going, which is what locks the keys and Speed (spec 5.7)."""
+    return engine.current().snapshot().state is not engine.RunState.IDLE
 
 
 def build(

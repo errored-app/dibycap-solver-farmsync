@@ -379,14 +379,32 @@ class Engine:
 
         The stop flag is set on the way out, so a worker that outlives the round
         loop takes no further account.
+
+        A run that ended on a fault leaves its raw text in `message`. That is what
+        the screen puts behind the small **Details** link of spec 5.6 — the
+        headline stays plain words, and the raw text is one click away.
         """
         _log.info("run over fault=%s", terminal.code.value if terminal else "none")
         self._stopping.set()
         self._set(
             state=RunState.IDLE,
-            headline=messages.for_code(terminal.code) if terminal else messages.RUN_STOPPED,
-            message="",
+            headline=_end_headline(terminal),
+            message=terminal.detail if terminal else "",
         )
+
+
+def _end_headline(terminal: AppError | None) -> str:
+    """The headline a finished run leaves behind.
+
+    An unnamed fault is an engine bug as far as the user is concerned, and spec
+    5.6 gives it its own sentence: the run stopped, which "try again in a moment"
+    does not say.
+    """
+    if terminal is None:
+        return messages.RUN_STOPPED
+    if terminal.code is ErrorCode.UNKNOWN:
+        return messages.RUN_CRASHED
+    return messages.for_code(terminal.code)
 
 
 def _rest_headline(found: list[dict[str, Any]] | None) -> str:
