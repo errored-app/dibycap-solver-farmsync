@@ -12,8 +12,6 @@ flaky, no `join` on something that may never end.
 from __future__ import annotations
 
 import threading
-import time
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Callable
 
@@ -23,6 +21,8 @@ from farmsync_solver.engine import Engine, run
 from farmsync_solver.engine.snapshot import AccountRow, Result, RunSnapshot, RunState
 from farmsync_solver.errors import AppError, ErrorCode
 from farmsync_solver.ui import messages
+
+from conftest import wait_for
 
 from fakes import Script
 
@@ -87,16 +87,6 @@ class FakeFarmsync:
         return self._rounds()
 
 
-@pytest.fixture
-def engines() -> Iterator[list[Engine]]:
-    """Every engine a test starts, stopped before the test ends."""
-    started: list[Engine] = []
-    yield started
-    for engine in started:
-        engine.stop()
-        wait_for(lambda stopped=engine: stopped.snapshot().state is RunState.IDLE, timeout=10)
-
-
 def build(
     monkeypatch: pytest.MonkeyPatch,
     engines: list[Engine],
@@ -115,16 +105,6 @@ def build(
     engine = Engine()
     engines.append(engine)
     return engine, client, farm
-
-
-def wait_for(check: Callable[..., bool], timeout: float = 5.0) -> bool:
-    """True as soon as `check` passes. Polls; never blocks on another thread."""
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if check():
-            return True
-        time.sleep(0.005)
-    return check()
 
 
 def run_one_round(engine: Engine) -> None:

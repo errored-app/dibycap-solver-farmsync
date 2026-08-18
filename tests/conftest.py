@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import importlib
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from types import ModuleType
 
 import pytest
 
 from farmsync_solver import logging_setup
+from farmsync_solver.engine import Engine
+from farmsync_solver.engine.snapshot import RunState
 
 
 @pytest.fixture(autouse=True)
@@ -25,3 +28,27 @@ def ui_app() -> ModuleType:
     while the window serves a fresh one. Patch and read the module through this.
     """
     return importlib.import_module("farmsync_solver.ui.app")
+
+
+def wait_for(check: Callable[..., bool], timeout: float = 5.0) -> bool:
+    """True as soon as `check` passes. Polls; never blocks on another thread."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if check():
+            return True
+        time.sleep(0.005)
+    return check()
+
+
+@pytest.fixture
+def engines() -> Iterator[list[Engine]]:
+    """Every engine a test starts, stopped before the test ends.
+
+    Here rather than in one test file: two files drive a real engine, and a
+    fixture imported from another test module reads as a redefinition.
+    """
+    started: list[Engine] = []
+    yield started
+    for engine in started:
+        engine.stop()
+        wait_for(lambda stopped=engine: stopped.snapshot().state is RunState.IDLE, timeout=10)

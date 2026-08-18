@@ -68,6 +68,37 @@ def configure(log_dir: Path | None = None) -> Path | None:
     return path
 
 
+def current_file() -> Path | None:
+    """The file this run is writing, or None when logging is off.
+
+    Diagnostics needs the path; nothing else in the app does, and nothing else
+    is told where the folder is.
+    """
+    return _log_file
+
+
+def event(name: str, **fields: object) -> str:
+    """One fixed-shape log message: an event name, then `key=value` fields.
+
+    Spec 8.1 fixes the shape so a log is greppable rather than prose. Empty
+    fields are left out — a blank value says nothing and widens every line — and
+    a value holding a space is quoted, so the shape survives an exception text.
+    """
+    written = " ".join(
+        f"{key}={_value(value)}" for key, value in fields.items() if _is_worth_writing(value)
+    )
+    return f"{name}  {written}" if written else name
+
+
+def _is_worth_writing(value: object) -> bool:
+    return value is not None and value != ""
+
+
+def _value(value: object) -> str:
+    text = str(value)
+    return f'"{text}"' if any(character.isspace() for character in text) else text
+
+
 def reset() -> None:
     """Undo `configure`. For tests and for a clean shutdown."""
     global _handler, _log_file, _previous_excepthook

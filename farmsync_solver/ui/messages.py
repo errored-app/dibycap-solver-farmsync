@@ -88,6 +88,35 @@ SETTINGS_FORGET_QUESTION = "Delete your saved keys?"
 SETTINGS_FORGET_NOTE = "You will have to paste them again next time."
 SETTINGS_FORGET_YES = "Forget them"
 SETTINGS_CANCEL = "Cancel"
+SETTINGS_SUPPORT_TITLE = "Something wrong?"
+SETTINGS_SUPPORT_NOTE = "Copy the report, then paste it where you ask for help."
+SETTINGS_COPY_DIAGNOSTICS = "Copy diagnostics"
+SETTINGS_COPIED = "Copied. Paste it where you ask for help."
+SETTINGS_OPEN_LOGS = "Open log folder"
+SETTINGS_LOGS_FAILED = "Could not open the log folder."
+
+# The two words the diagnostics header uses for the key check. Technical, like
+# the rest of the report (spec 8.1) — this text is read by the maintainer.
+DIAGNOSTICS_KEY_OK = "ok"
+DIAGNOSTICS_KEY_UNCHECKED = "not checked yet"
+
+# Sentence -> the constant that holds it. Later names win, which never happens:
+# no two constants here hold the same words.
+_NAME_OF: dict[str, str] = {
+    value: name
+    for name, value in list(globals().items())
+    if name.isupper() and isinstance(value, str)
+}
+
+
+def name_of(sentence: str) -> str:
+    """The constant behind a sentence, for the log (spec 8.1, "Tone").
+
+    The file is technical, so it records `RUN_NO_FARMSYNC`, not the friendly
+    words. Built once from this module's own names, so a new sentence is
+    loggable the moment it is written down here.
+    """
+    return _NAME_OF.get(sentence, "")
 
 
 def speed_choice(percent: int) -> str:

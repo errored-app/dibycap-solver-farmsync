@@ -1,8 +1,10 @@
 """The Settings screen: keys, Speed, Forget my keys, version.
 
 Spec 4.3. There is no About screen; the version lives at the bottom of this one.
-Check for updates, Copy diagnostics and Open log folder are the same screen's
-rows but a later ticket's work, and they land beside these.
+Check for updates is the same screen's row but a later ticket's work.
+
+Copy diagnostics and Open log folder are the whole support path (spec 8.4), and
+they stay live during a run: trouble is exactly when a user reaches for them.
 
 Speed is the only face the thread count has (spec 5.4). The percentage is saved;
 the derived thread count is never written down and never shown.
@@ -22,10 +24,10 @@ from typing import Callable
 
 from nicegui import ui
 
-from .. import config, engine
+from .. import config, diagnostics, engine
 from .._version import APP_NAME, VERSION
 from ..errors import AppError
-from . import messages, setup
+from . import home, messages, setup
 
 GOOD_COLOUR = "text-green-700"
 BAD_COLOUR = "text-red-600"
@@ -64,6 +66,7 @@ def build(
 
         _keys_section(on_forget, locked)
         _speed_section(speed_percent, locked)
+        _support_section()
 
         ui.label(f"{APP_NAME} {VERSION}").classes("text-xs text-gray-500")
 
@@ -129,6 +132,53 @@ def _speed_section(speed_percent: int, locked: bool) -> None:
     speed.set_enabled(not locked)
 
 
+def _support_section() -> None:
+    """Spec 8.4: one button to copy a report, one to open the folder of logs.
+
+    Neither is locked during a run. Both are silent about failure in the log and
+    plain about it on screen, because this is the screen a stuck user is on.
+    """
+    ui.label(messages.SETTINGS_SUPPORT_TITLE).classes("text-lg font-semibold")
+    ui.label(messages.SETTINGS_SUPPORT_NOTE).classes("text-sm text-gray-500")
+
+    with ui.row().classes("items-center gap-3"):
+        copy = ui.button(messages.SETTINGS_COPY_DIAGNOSTICS).mark("copy-diagnostics")
+        open_logs = ui.button(messages.SETTINGS_OPEN_LOGS).props("outline").mark("open-logs")
+    note = ui.label().classes("text-sm").mark("support-note")
+
+    async def press_copy() -> None:
+        await ui.clipboard.write(diagnostics_text())
+        _say(note, messages.SETTINGS_COPIED, good=True)
+
+    def press_open() -> None:
+        opened = diagnostics.open_log_folder()
+        _say(note, "" if opened else messages.SETTINGS_LOGS_FAILED, good=opened)
+
+    copy.on("click", press_copy)
+    open_logs.on("click", press_open)
+
+
+def diagnostics_text() -> str:
+    """The report the Copy button puts on the clipboard.
+
+    Every value is read at press time. Speed especially: the toggle above saves
+    to the file the moment it is clicked, and a value closed over when the screen
+    was drawn would report the percentage the user just changed away from.
+
+    The key check and the credit come from the last Home re-check rather than
+    from a fresh call, so pressing Copy while nothing works still produces
+    something to paste.
+    """
+    snapshot = engine.current().snapshot()
+    answer = home.last_credit()
+    return diagnostics.bundle(
+        run_state=snapshot.state.value,
+        key_check=answer.check_note if answer else messages.DIAGNOSTICS_KEY_UNCHECKED,
+        credit=answer.header if answer else messages.CREDIT_UNKNOWN,
+        speed_percent=config.load().speed_percent,
+    )
+
+
 def _forget_dialog(on_forget: Callable[[], None]) -> ui.dialog:
     """Ask before deleting. The keys cost money to get wrong."""
     with ui.dialog().mark("forget-dialog") as dialog, ui.card().classes("items-stretch gap-3"):
@@ -147,6 +197,9 @@ def _forget_dialog(on_forget: Callable[[], None]) -> ui.dialog:
         except Exception as error:
             failure.set_text(_failure_text(error))
             return
+        # The remembered re-check goes with the keys it was made against, or the
+        # diagnostics header would still report a key that is no longer there.
+        home.forget_credit()
         dialog.close()
         on_forget()
 

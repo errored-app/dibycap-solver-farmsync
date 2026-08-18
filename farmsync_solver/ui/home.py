@@ -81,6 +81,11 @@ class Credit:
         """Low credit still starts; a failed check does not (spec 5.7)."""
         return not self.error
 
+    @property
+    def check_note(self) -> str:
+        """How the diagnostics header reads this answer (spec 8.4)."""
+        return self.error or messages.DIAGNOSTICS_KEY_OK
+
 
 @dataclass(frozen=True)
 class Panel:
@@ -106,19 +111,47 @@ class Panel:
     low: bool
 
 
+_last_credit: Credit | None = None
+
+
+def forget_credit() -> None:
+    """Drop the remembered re-check, so a stale answer cannot outlive the keys."""
+    global _last_credit
+    _last_credit = None
+
+
+def last_credit() -> Credit | None:
+    """What the last re-check answered, or None before the first one.
+
+    Kept for the diagnostics header of spec 8.4: Settings must say whether the
+    key works and how much credit is left, and re-checking on that screen would
+    make pressing a Copy button reach the network.
+    """
+    return _last_credit
+
+
 def read_credit(api_key: str, check_key: KeyCheck | None = None) -> Credit:
     """Re-check the key and turn the answer into header text and a red line."""
+    global _last_credit
+
     # Looked up now, not in the signature, so a caller can swap it.
     check_key = check_key or keys.check_api_key
 
     try:
         balance = check_key(api_key)
     except AppError as error:
-        return _refused(error.code)
+        return _remember(_refused(error.code))
     except Exception as error:  # a surprise must not take the window down
-        return _refused(AppError.from_exception(error).code)
+        return _remember(_refused(AppError.from_exception(error).code))
 
-    return Credit(header=messages.credit_header(balance), low=credit.is_low(balance))
+    return _remember(Credit(header=messages.credit_header(balance), low=credit.is_low(balance)))
+
+
+def _remember(answer: Credit) -> Credit:
+    """Keep the answer for the diagnostics header, and hand it back."""
+    global _last_credit
+    _last_credit = answer
+    return answer
 
 
 def panel_of(snapshot: RunSnapshot, can_start: bool) -> Panel:

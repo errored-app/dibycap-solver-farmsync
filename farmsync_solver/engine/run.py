@@ -24,6 +24,7 @@ from typing import Any, Callable
 
 from .. import credit
 from ..errors import AppError, ErrorCode, is_terminal
+from ..logging_setup import event
 
 # The engine holds no user copy of its own: every sentence a run puts on screen
 # comes from the one table of spec 9.7. `ui.messages` imports no NiceGUI, so a
@@ -111,7 +112,10 @@ class Engine:
         _empty(self._accounts)
         _empty(self._finished)
         _empty(self._rows)
-        self._snapshot = replace(IDLE, state=RunState.DISCOVERING, headline=messages.RUN_STARTING)
+        # Back to the empty snapshot first, then through `_set`, so the run's
+        # first state change is logged like every later one (spec 8.1).
+        self._snapshot = IDLE
+        self._set(state=RunState.DISCOVERING, headline=messages.RUN_STARTING)
 
         self._loop = threading.Thread(
             target=self._run,
@@ -129,7 +133,7 @@ class Engine:
         if not self._is_running:
             return
 
-        _log.info("stop asked")
+        _log.info(event("stop"))
         self._stopping.set()
         self._set(state=RunState.STOPPING, headline=messages.RUN_STOPPING, message="")
 
@@ -163,11 +167,11 @@ class Engine:
             # Spec 5.4: a `/balance` that does not answer refuses the run. There
             # is no fallback thread count, so nothing is discovered and no worker
             # starts.
-            _log.warning("run refused code=%s", error.code.value)
+            _log.warning(event("run", phase="refused", code=error.code.value, detail=error.detail))
             self._finish(error)
             return
 
-        _log.info("run start threads=%d speed=%d", threads, speed_percent)
+        _log.info(event("run", phase="start", threads=threads, speed=speed_percent))
         farm = Farmsync(farm_token)
         round_number = 0
 
@@ -175,19 +179,21 @@ class Engine:
             while not self._stopping.is_set():
                 round_number += 1
                 self._set(round_number=round_number, done=0, total=0)
+                _log.info(event("round", number=round_number, phase="start"))
 
                 found = self._discover(client, farm)
                 if found:
                     terminal = self._solve_round(client, found, threads)
-                    if terminal is not None:
-                        break
+                self._log_round_end(round_number, found)
+                if terminal is not None:
+                    break
                 if self._stopping.is_set():
                     break
                 self._rest(client, _rest_headline(found))
         except AppError as error:
             terminal = error
         except Exception as error:  # an engine bug stops the run, quietly (spec 5.5)
-            _log.exception("run failed")
+            _log.exception(event("run", phase="crashed", detail=f"{type(error).__name__}: {error}"))
             terminal = AppError.from_exception(error)
 
         self._finish(terminal)
@@ -232,11 +238,13 @@ class Engine:
                 return []
             self._refresh_credit(client)  # discovery is ~12 s of a ~72 s round
             try:
-                return farm.discover()
+                found = farm.discover()
+                _log.info(event("discover", accounts=len(found)))
+                return found
             except AppError as error:
                 if error.code is ErrorCode.BAD_FARM_TOKEN:
                     raise
-                _log.warning("discovery failed code=%s", error.code.value)
+                _log.warning(event("discover", phase="failed", code=error.code.value))
 
         return None
 
@@ -345,7 +353,7 @@ class Engine:
         try:
             balance = client.balance()
         except AppError as error:
-            _log.info("credit refresh missed code=%s", error.code.value)
+            _log.info(event("credit", phase="missed", code=error.code.value))
             return
 
         self._show_credit(balance)
@@ -365,11 +373,38 @@ class Engine:
                 return
             left -= step
 
+    def _log_round_end(self, number: int, found: list[dict[str, Any]] | None) -> None:
+        """Close the round in the log with the totals the run holds so far."""
+        current = self._snapshot
+        _log.info(
+            event(
+                "round",
+                number=number,
+                phase="end",
+                found=0 if found is None else len(found),
+                done=current.done,
+                joined=current.joined,
+                solved=current.solved,
+                failed=current.failed,
+            )
+        )
+
     # --- the snapshot ------------------------------------------------------
 
     def _set(self, **changes: Any) -> None:
-        """Replace the snapshot. Never edits one: a reader holds a whole value."""
+        """Replace the snapshot. Never edits one: a reader holds a whole value.
+
+        Every state change is logged from here rather than from each caller, so
+        spec 8.1's "every run-state change" cannot be missed by a new branch. The
+        headline goes with it, by its `messages.py` name: the file has to say
+        which sentence the user was reading, not read it back in friendly words.
+        """
+        was = self._snapshot
         self._snapshot = replace(self._snapshot, **changes)
+        if self._snapshot.state is not was.state:
+            _log.info(event("state", state=self._snapshot.state.value))
+        if self._snapshot.headline != was.headline:
+            _log.info(event("shown", message=messages.name_of(self._snapshot.headline)))
 
     def _show_credit(self, balance: dict[str, Any]) -> None:
         self._set(credit_left=credit.money(balance), estimated_solves=credit.solves(balance))
@@ -384,7 +419,14 @@ class Engine:
         the screen puts behind the small **Details** link of spec 5.6 — the
         headline stays plain words, and the raw text is one click away.
         """
-        _log.info("run over fault=%s", terminal.code.value if terminal else "none")
+        _log.info(
+            event(
+                "run",
+                phase="end",
+                fault=terminal.code.value if terminal else "none",
+                detail=terminal.detail if terminal else "",
+            )
+        )
         self._stopping.set()
         self._set(
             state=RunState.IDLE,
@@ -455,9 +497,20 @@ def solve_account(
             return _named(account_id, _read(client.solve(cookie)))
         except AppError as error:
             if is_terminal(error):
-                _log.info("account %s terminal %s", account_id, error.detail)
+                _log.info(
+                    event(
+                        "solve",
+                        account=account_id,
+                        result="terminal",
+                        code=error.code.value,
+                        detail=error.detail,
+                    )
+                )
                 raise
             detail = error.detail
+            _log.info(
+                event("attempt", account=account_id, number=attempt, detail=detail)
+            )
             if detail in HOPELESS_CODES:
                 break
 
@@ -474,5 +527,5 @@ def _read(timings: dict[str, Any]) -> Result:
 
 
 def _named(account_id: str, result: Result, detail: str = "") -> Outcome:
-    _log.info("account %s %s %s", account_id, result.value, detail)
+    _log.info(event("solve", account=account_id, result=result.value, detail=detail))
     return Outcome(account_id=account_id, result=result, detail=detail)

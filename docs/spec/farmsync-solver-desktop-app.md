@@ -442,6 +442,7 @@ farmsync_solver/
   _version.py                  <- GENERATED at build time from the git tag
   config.py                    <- the ONLY file that knows %APPDATA%\FarmsyncSolver\config.json + DPAPI
   credit.py                    <- what a /balance payload means: solves, money, low
+  diagnostics.py               <- the Copy diagnostics report and Open log folder
   errors.py                    <- error types with stable codes; shared by engine, keys, updater
   keys.py                      <- check_api_key(key), check_farm_token(token)
   logging_setup.py             <- configures stdlib logging once, at process start

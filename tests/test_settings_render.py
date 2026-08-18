@@ -138,3 +138,97 @@ async def test_new_keys_are_checked_and_saved_from_settings(
 
     await user.should_see(messages.SETTINGS_SAVED)
     assert config.load(saved_keys).api_key == "new-key"
+
+
+# --- §8.4: the support path ------------------------------------------------
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_copy_diagnostics_puts_the_report_on_the_clipboard(
+    user: User, saved_keys: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nicegui import ui
+
+    copied: list[str] = []
+
+    async def remember(text: str) -> None:
+        copied.append(text)
+
+    monkeypatch.setattr(ui.clipboard, "write", remember)
+    await _open_settings(user)
+
+    user.find(marker="copy-diagnostics").click()
+    await user.should_see(messages.SETTINGS_COPIED)
+
+    assert copied and VERSION in copied[0]
+    assert "Run state: idle" in copied[0]
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_open_log_folder_says_so_when_it_cannot(
+    user: User, saved_keys: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from farmsync_solver import diagnostics
+
+    monkeypatch.setattr(diagnostics, "open_log_folder", lambda folder=None: False)
+    await _open_settings(user)
+
+    user.find(marker="open-logs").click()
+    await user.should_see(messages.SETTINGS_LOGS_FAILED)
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_the_support_buttons_stay_live_during_a_run(
+    user: User, saved_keys: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Spec 8.5: trouble is exactly when these are reached for."""
+    from farmsync_solver.ui import settings
+
+    monkeypatch.setattr(settings, "is_running", lambda: True)
+    await _open_settings(user)
+
+    for marker in ("copy-diagnostics", "open-logs"):
+        assert all(button.enabled for button in user.find(marker=marker).elements)
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_the_report_carries_the_speed_as_it_is_when_copy_is_pressed(
+    user: User, saved_keys: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Speed is changed on this very screen; the report must not lag behind."""
+    from nicegui import ui
+
+    copied: list[str] = []
+
+    async def remember(text: str) -> None:
+        copied.append(text)
+
+    monkeypatch.setattr(ui.clipboard, "write", remember)
+    await _open_settings(user)
+
+    toggle: Any = next(iter(user.find(marker="speed-toggle").elements))
+    toggle.set_value(25)
+    await user.should_see(messages.SETTINGS_SAVED)
+    user.find(marker="copy-diagnostics").click()
+    await user.should_see(messages.SETTINGS_COPIED)
+
+    assert "Speed: 25%" in copied[0]
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_forgetting_the_keys_drops_the_remembered_key_check(
+    user: User, saved_keys: Path
+) -> None:
+    """A report must not say the key works after the key has been deleted."""
+    from farmsync_solver.ui import home
+
+    home.read_credit("abc")
+    assert home.last_credit() is not None
+
+    await _open_settings(user)
+    user.find(messages.SETTINGS_FORGET).click()
+    await user.should_see(messages.SETTINGS_FORGET_QUESTION)
+    user.find(messages.SETTINGS_FORGET_YES).click()
+    await user.should_see(messages.SETUP_BUTTON)
+
+    assert home.last_credit() is None
