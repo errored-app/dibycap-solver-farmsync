@@ -49,6 +49,13 @@ every later account would fail the same way.
 An **attempt** is one account sent to the solver. A **solve** is an attempt that
 actually cracked a captcha. Only solves are billed.
 
+## Outcome
+
+What one account came to: the account id, its **result**, and a detail. The
+result is one of three — **joined** (got in, no captcha), **solved** (a captcha
+was cracked), **failed** (could not be checked). A failed result carries the raw
+dibycap code as its detail. Failures are routine, not an alarm.
+
 ## Speed
 
 A user-facing percentage (25/50/75/100) of the key's reported `max_concurrent`.

@@ -18,6 +18,11 @@ class ErrorCode(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+# A solver failure about the key, not the account (spec 5.5). The first one ends
+# the run, because every later account fails the same way.
+TERMINAL_ERROR_CODES = frozenset({ErrorCode.BAD_API_KEY, ErrorCode.NO_CREDIT})
+
+
 class AppError(Exception):
     """Any failure the app can name. Never carries a cookie or an API key."""
 
@@ -32,3 +37,8 @@ class AppError(Exception):
         if isinstance(error, AppError):
             return error
         return cls(ErrorCode.UNKNOWN, f"{type(error).__name__}: {error}")
+
+
+def is_terminal(error: AppError) -> bool:
+    """True when a solve failure is about the key and must end the run."""
+    return error.code in TERMINAL_ERROR_CODES
