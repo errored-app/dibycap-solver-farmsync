@@ -52,7 +52,7 @@ def build_page() -> None:
     def show_home() -> None:
         screen.clear()
         with screen:
-            home.build()
+            home.build(_config.api_key)
 
     def after_setup() -> None:
         load_config()
@@ -60,7 +60,7 @@ def build_page() -> None:
 
     with screen:
         if first_screen(_config) == "home":
-            home.build()
+            home.build(_config.api_key)
         else:
             setup.build(after_setup)
 

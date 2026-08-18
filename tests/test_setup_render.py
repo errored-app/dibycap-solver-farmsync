@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 from nicegui.testing import User
 
 from farmsync_solver import config, keys
 from farmsync_solver.errors import AppError, ErrorCode
-from farmsync_solver.ui import app, messages
+from farmsync_solver.ui import messages
 
 BALANCE = {"success": True, "estimated_solves": 5662}
 
@@ -29,10 +30,10 @@ pytest_plugins = ["nicegui.testing.user_plugin"]
 
 @pytest.mark.nicegui_main_file("tests/nicegui_main.py")
 async def test_setup_is_drawn_when_no_keys_are_saved(
-    user: User, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    user: User, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ui_app: ModuleType
 ) -> None:
     monkeypatch.setattr(config, "default_path", lambda: tmp_path / "config.json")
-    app.load_config()
+    ui_app.load_config()
 
     await user.open("/")
     await user.should_see(messages.SETUP_BUTTON)
@@ -42,12 +43,12 @@ async def test_setup_is_drawn_when_no_keys_are_saved(
 
 @pytest.mark.nicegui_main_file("tests/nicegui_main.py")
 async def test_a_refused_key_is_reported_under_its_own_box(
-    user: User, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    user: User, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ui_app: ModuleType
 ) -> None:
     monkeypatch.setattr(config, "default_path", lambda: tmp_path / "config.json")
     monkeypatch.setattr(keys, "check_api_key", _refusing_key)
     monkeypatch.setattr(keys, "check_farm_token", _good_token)
-    app.load_config()
+    ui_app.load_config()
 
     await user.open("/")
     user.find(messages.SETUP_API_KEY_LABEL).type("wrong")
@@ -60,13 +61,13 @@ async def test_a_refused_key_is_reported_under_its_own_box(
 
 @pytest.mark.nicegui_main_file("tests/nicegui_main.py")
 async def test_two_good_keys_are_saved_and_the_screen_moves_on(
-    user: User, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    user: User, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ui_app: ModuleType
 ) -> None:
     path = tmp_path / "config.json"
     monkeypatch.setattr(config, "default_path", lambda: path)
     monkeypatch.setattr(keys, "check_api_key", _good_key)
     monkeypatch.setattr(keys, "check_farm_token", _good_token)
-    app.load_config()
+    ui_app.load_config()
 
     await user.open("/")
     user.find(messages.SETUP_API_KEY_LABEL).type("abc")

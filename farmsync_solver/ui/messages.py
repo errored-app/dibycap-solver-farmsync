@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .. import credit
 from ..errors import ErrorCode
 
 FOR_CODE: dict[ErrorCode, str] = {
@@ -30,6 +31,11 @@ SETUP_FARM_TOKEN_LABEL = "farmsync token"
 SETUP_BUTTON = "Check and save"
 SETUP_CHECKING = "Checking your keys…"
 
+HOME_START = "Start"
+HOME_CHECKING = "Checking your credit…"
+HOME_NO_RUNS = "No runs yet."
+CREDIT_UNKNOWN = "Credit unknown"
+
 
 def for_code(code: ErrorCode | None) -> str:
     """The sentence for a code. An unnamed failure reads as an unknown one."""
@@ -38,10 +44,9 @@ def for_code(code: ErrorCode | None) -> str:
 
 def key_works(balance: dict[str, Any]) -> str:
     """The inline success line of spec 4.1, credit in solves."""
-    return f"Key works — {solves(balance):,} captchas left"
+    return f"Key works — {credit.solves(balance):,} captchas left"
 
 
-def solves(balance: dict[str, Any]) -> int:
-    """`estimated_solves` as a whole number, missing or odd values reading as 0."""
-    value = balance.get("estimated_solves")
-    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+def credit_header(balance: dict[str, Any]) -> str:
+    """The Home header of spec 4.2: solves first, money second."""
+    return f"{credit.solves(balance):,} captchas left (${credit.money(balance):,.2f})"

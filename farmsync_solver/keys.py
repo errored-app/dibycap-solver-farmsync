@@ -6,11 +6,23 @@ boolean, and neither holds user-facing copy.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from .engine.dibycap import Dibycap
 from .engine.farmsync import Farmsync
 from .errors import AppError, ErrorCode
+
+
+class KeyCheck(Protocol):
+    """The shape of `check_api_key`, so a screen can be tested with a stand-in."""
+
+    def __call__(self, key: str, session: Any | None = ...) -> dict[str, Any]: ...
+
+
+class TokenCheck(Protocol):
+    """The shape of `check_farm_token`."""
+
+    def __call__(self, token: str, session: Any | None = ...) -> None: ...
 
 
 def check_api_key(key: str, session: Any | None = None) -> dict[str, Any]:

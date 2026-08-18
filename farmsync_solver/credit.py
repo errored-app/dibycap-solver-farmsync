@@ -1,0 +1,45 @@
+"""What a `/balance` payload means, in solves and money.
+
+Spec 7. The rules live here rather than in the screen, so the header, the Speed
+control and the run all read the same payload the same way.
+
+Only three fields are read: `estimated_solves`, `price_per_1k` and `balance`.
+`active` and `type` are ignored on purpose (spec 7), and `price_per_1k` is never
+shown — it only turns solves into money.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+LOW_SOLVES = 1000
+SOLVES_PER_PRICE_UNIT = 1000
+
+
+def solves(balance: dict[str, Any]) -> int:
+    """`estimated_solves` as a whole number. Missing or odd values read as 0."""
+    value = balance.get("estimated_solves")
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def money(balance: dict[str, Any]) -> float:
+    """The money left, derived from the price of a thousand solves.
+
+    The `balance` field is the fallback only: it is the money the key holds,
+    while the figure beside the solves count must be the money those solves are
+    worth. The two agree on every payload measured so far.
+    """
+    price = _number(balance.get("price_per_1k"))
+    if price is not None:
+        return solves(balance) * price / SOLVES_PER_PRICE_UNIT
+    return _number(balance.get("balance")) or 0.0
+
+
+def is_low(balance: dict[str, Any]) -> bool:
+    """Under the fixed threshold. A warning only; it never blocks a run."""
+    return solves(balance) < LOW_SOLVES
+
+
+def _number(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)

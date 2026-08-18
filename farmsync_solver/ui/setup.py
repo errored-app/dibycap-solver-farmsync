@@ -12,25 +12,18 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Callable
 
 from nicegui import run, ui
 
 from .. import config, keys
 from ..errors import AppError
+from ..keys import KeyCheck, TokenCheck
 from . import messages
 
 SUCCESS_PAUSE_SECONDS = 1.6
 
 _log = logging.getLogger(__name__)
-
-
-class KeyCheck(Protocol):
-    def __call__(self, key: str, session: Any | None = ...) -> dict[str, Any]: ...
-
-
-class TokenCheck(Protocol):
-    def __call__(self, token: str, session: Any | None = ...) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -106,6 +99,8 @@ def build(on_done: Callable[[], None]) -> None:
                 )
             finally:
                 button.enable()
+            if result is None:  # NiceGUI answers None when it cancels the call
+                return
 
             _mark(api_key_box, result.api_key_error)
             _mark(farm_token_box, result.farm_token_error)
