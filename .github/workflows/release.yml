@@ -1,0 +1,85 @@
+# A release is one git tag (spec 11.1). Nothing is ever built on a personal machine.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the locked dependencies
+        run: uv sync --frozen --group build
+
+      - name: Stamp the version from the tag
+        id: version
+        run: |
+          uv run python -m scripts.stamp_version "${{ github.ref_name }}" `
+            --module farmsync_solver/_version.py `
+            --version-file build/file_version_info.txt >> $env:GITHUB_OUTPUT
+
+      # nicegui-pack, not bare pyinstaller: without NiceGUI's own --add-data the
+      # frontend assets are missing and the UI ships blank. --onedir, not --onefile,
+      # which unpacks to temp on every launch and draws antivirus heuristics.
+      - name: Pack the app
+        run: |
+          uv run nicegui-pack --onedir --windowed --noconfirm --clean `
+            --name FarmsyncSolver `
+            --icon assets/FarmsyncSolver.ico `
+            main.py
+
+      # nicegui-pack swallows PyInstaller's exit code, so a failed build looks
+      # green here. This step is the first one that notices.
+      - name: Stamp the version onto the exe properties
+        run: |
+          uv run pyi-set_version build/file_version_info.txt dist/FarmsyncSolver/FarmsyncSolver.exe
+
+      # Catches the import-time half of a blank window: a missing NiceGUI asset,
+      # or a stray print() where --windowed leaves sys.stdout as None.
+      #
+      # Start-Process, not a direct call: --windowed builds a GUI-subsystem exe,
+      # which PowerShell does not wait on, so a direct call leaves $LASTEXITCODE
+      # empty and the step goes green whatever the app returned.
+      - name: Self-test the built exe
+        run: |
+          $app = Start-Process -FilePath dist/FarmsyncSolver/FarmsyncSolver.exe `
+            -ArgumentList '--selftest' -Wait -PassThru
+          "selftest exit=$($app.ExitCode)"
+          if ($app.ExitCode -ne 0) { throw "the built exe failed its selftest" }
+
+      - name: Zip the build output
+        run: |
+          $name = "FarmsyncSolver-${{ steps.version.outputs.version }}-win64.zip"
+          Compress-Archive -Path dist/FarmsyncSolver -DestinationPath "dist/$name"
+
+      - name: Compute the checksums
+        run: |
+          Get-ChildItem dist -File |
+            ForEach-Object { "{0}  {1}" -f (Get-FileHash $_ -Algorithm SHA256).Hash.ToLower(), $_.Name } |
+            Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          Get-Content dist/SHA256SUMS.txt
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          # A tag holding a dash is a pre-release, which releases/latest skips,
+          # so no user's app auto-updates to it.
+          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
+          fail_on_unmatched_files: true
+          files: |
+            dist/FarmsyncSolver-${{ steps.version.outputs.version }}-win64.zip
+            dist/SHA256SUMS.txt

@@ -13,6 +13,11 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23",
+    "pyyaml>=6.0",
+]
+# Only the release workflow installs this group; a dev checkout never packs.
+build = [
+    "pyinstaller>=6.0,<7.0",
 ]
 
 [tool.pytest.ini_options]

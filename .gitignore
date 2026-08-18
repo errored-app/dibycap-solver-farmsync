@@ -18,3 +18,8 @@ Thumbs.db
 
 # Agent scratch
 .claude/
+
+# Build output
+build/
+dist/
+*.spec
