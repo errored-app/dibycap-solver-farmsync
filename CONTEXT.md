@@ -66,3 +66,16 @@ Credit under a fixed threshold. It is a warning only — it never blocks a run.
 ## Out of credit
 
 Credit at zero. A run will not start, and a running run stops.
+
+## Run log
+
+The record of one run, written to a file as the run happens. One run, one file.
+It is written for the maintainer, not the user: it carries real error codes, not
+the friendly words shown on screen. A run log never holds a cookie or a key —
+those are never given to the logger at all.
+
+## Diagnostics
+
+The short bundle a user copies to the clipboard to report trouble: a header
+describing the app and the current run, plus the tail of the current run log.
+It is a copy for pasting, not the whole run log.
