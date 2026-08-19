@@ -28,6 +28,7 @@ REQUIRED_FILES = [
     "ui/app.py",
     "ui/setup.py",
     "ui/home.py",
+    "ui/close_guard.py",
     "ui/settings.py",
     "ui/messages.py",
 ]

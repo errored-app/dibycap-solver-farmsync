@@ -38,6 +38,12 @@ The named phase a run is in:
 Stopping that starts no new work but lets in-flight solves finish, because those
 are already paid for. The opposite, dropping work at once, is not used.
 
+## Close question
+
+What the app asks before a run is dropped: *"A run is going. Stop it and close?"*
+It is raised by the window's X and by Ctrl+W, and only while a run is on. An idle
+app closes with no question.
+
 ## Terminal error
 
 A solver error that is not about the **account** — for example an invalid key,

@@ -267,6 +267,73 @@ async def test_keep_running_leaves_the_run_alone(
     assert closed == []
 
 
+# --- the window's own X (spec 5.3) ------------------------------------------
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_the_x_raises_the_question_while_a_run_is_going(
+    user: User, saved_keys: None, run_engine: FakeEngine
+) -> None:
+    await _open_home(user)
+    user.find(marker="run-button").click()
+    await asyncio.sleep(SETTLE_SECONDS)
+
+    assert home.close_or_ask() is False  # the window stays
+
+    await user.should_see(messages.CLOSE_QUESTION)
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_the_x_closes_an_idle_app_with_no_question(
+    user: User, saved_keys: None, run_engine: FakeEngine
+) -> None:
+    await _open_home(user)
+
+    assert home.close_or_ask() is True
+
+    assert _element(user, "closing-dialog").value is False
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_stop_and_close_is_not_asked_about_a_second_time(
+    user: User, saved_keys: None, run_engine: FakeEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Closing the window fires `closing` again. The answer already given holds."""
+    monkeypatch.setattr(home.native_app, "shutdown", lambda: None)
+    await _open_home(user)
+    user.find(marker="run-button").click()
+    await asyncio.sleep(SETTLE_SECONDS)
+
+    _element(user, "closing-dialog").open()
+    user.find(messages.CLOSE_YES).click()
+    await asyncio.sleep(SETTLE_SECONDS)
+
+    assert run_engine.snapshot().state is RunState.STOPPING  # still not Idle
+    assert home.close_or_ask() is True
+
+
+def test_no_screen_yet_means_nothing_to_ask(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Setup is on screen, or the window is still opening. The X just closes."""
+    monkeypatch.setattr(home, "_showing", None)
+
+    assert home.close_or_ask() is True
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_the_x_never_traps_the_window_behind_settings(
+    user: User, saved_keys: None, run_engine: FakeEngine
+) -> None:
+    """A run, then the gear: the dialog is off the page and cannot ask anything."""
+    await _open_home(user)
+    user.find(marker="run-button").click()
+    await asyncio.sleep(SETTLE_SECONDS)
+
+    user.find(marker="settings-gear").click()
+    await user.should_see(marker="speed-toggle")
+
+    assert home.close_or_ask() is True
+
+
 # --- no devices, no auto-start (spec 4.2) -----------------------------------
 
 

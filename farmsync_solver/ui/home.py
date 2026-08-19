@@ -263,6 +263,28 @@ def should_confirm_close(state: RunState) -> bool:
     return state is not RunState.IDLE
 
 
+# The Home screen this window is showing, or None while another screen is up.
+# The close question arrives over HTTP, outside any screen, and this is how it
+# finds the one dialog it must open.
+_showing: "_Screen | None" = None
+
+
+def close_or_ask() -> bool:
+    """Spec 5.3: close the window, or put the close question on screen.
+
+    True closes. False means the question is up instead, and the X must be
+    refused. With Home off the page there is no question and no dialog to put
+    it in, so the window goes.
+    """
+    return True if _showing is None else _showing.close_or_ask()
+
+
+def forget_screen() -> None:
+    """Home has left the page. Called before another screen is drawn over it."""
+    global _showing
+    _showing = None
+
+
 def build(
     api_key: str,
     farm_token: str,
@@ -275,8 +297,10 @@ def build(
     Takes plain values, not the config: `Engine.start` takes the same three for
     the same reason (spec 9.2), and the screen reads nothing else from the file.
     """
+    global _showing
     worker = run_engine if run_engine is not None else engine.current()
     state = _Screen(worker, api_key, farm_token, speed_percent)
+    _showing = state
 
     _update_strip(state)
 
@@ -353,6 +377,7 @@ class _Screen:
         # the whole of the shared state, so no lock buys anything here.
         self._fraction = 0.0
         self.closing: ui.dialog | None = None
+        self._close_answered = False
 
     # --- the open-time re-check -------------------------------------------
 
@@ -469,13 +494,28 @@ class _Screen:
 
     def request_close(self) -> None:
         """Spec 5.3: a run is asked about; an idle app just closes."""
-        if self.closing is not None and should_confirm_close(self._worker.snapshot().state):
-            self.closing.open()
-            return
-        native_app.shutdown()
+        if self.close_or_ask():
+            native_app.shutdown()
+
+    def close_or_ask(self) -> bool:
+        """Spec 5.3: True closes, False puts the close question on screen instead.
+
+        An answer already given holds. Closing the window raises the question a
+        second time, and by then the polite stop has left the run Stopping, not
+        Idle — asking again would trap the window inside its own dialog. A
+        dialog that is no longer on the page cannot ask anything either, and a
+        window nobody can close is the worse of the two failures.
+        """
+        if self._close_answered or self.closing is None or self.closing.is_deleted:
+            return True
+        if not should_confirm_close(self._worker.snapshot().state):
+            return True
+        self.closing.open()
+        return False
 
     def stop_and_close(self) -> None:
         """The polite stop of spec 5.2, then the window goes."""
+        self._close_answered = True
         self._worker.stop()
         native_app.shutdown()
 
