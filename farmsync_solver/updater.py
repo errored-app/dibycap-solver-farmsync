@@ -89,25 +89,6 @@ class CheckAnswer:
         return self.reached_github and self.update is None
 
 
-_pending: Update | None = None
-
-
-def pending() -> Update | None:
-    """The update the last check found, or None.
-
-    Home and Settings both need it: Settings can find one, and the bar that
-    offers it lives on Home.
-    """
-    return _pending
-
-
-def remember(update: Update | None) -> Update | None:
-    """Keep what a check found, and hand it back. `None` clears it."""
-    global _pending
-    _pending = update
-    return update
-
-
 def is_newer(latest: str, current: str) -> bool:
     """Whether `latest` is worth offering over `current`.
 
@@ -158,8 +139,8 @@ def check(session: Any | None = None, current_version: str = VERSION) -> CheckAn
     Unauthenticated: 60 requests an hour is ample for one call at startup and one
     behind a button.
 
-    A failed check leaves whatever an earlier check found in place. Forgetting it
-    would take the update bar off the screen the moment the user went offline.
+    The answer holds only what this call learned. What a failed check leaves
+    standing is `ui.update_offer.UpdateOffer.absorb`'s rule, not this one.
     """
     talker = session if session is not None else _new_session()
 
@@ -167,21 +148,21 @@ def check(session: Any | None = None, current_version: str = VERSION) -> CheckAn
         response = talker.get(RELEASE_URL, headers=GITHUB_HEADERS, timeout=TIMEOUT_SECONDS)
         if response.status_code != 200:
             _log.info("update check refused http=%s", response.status_code)
-            return CheckAnswer(pending(), reached_github=False)
+            return CheckAnswer(reached_github=False)
         payload = response.json()
     except Exception as error:  # offline, a timeout, a body that is not JSON
         _log.info("update check failed error=%s", type(error).__name__)
-        return CheckAnswer(pending(), reached_github=False)
+        return CheckAnswer(reached_github=False)
 
     if not isinstance(payload, dict):
         # A shape nobody expected is a failed call, not a "you are up to date":
         # the app learned nothing about which version is out there.
         _log.info("update check got an unexpected shape")
-        return CheckAnswer(pending(), reached_github=False)
+        return CheckAnswer(reached_github=False)
 
     found = find_update(payload, current_version)
     _log.info("update check ok found=%s", found.version if found else "none")
-    return CheckAnswer(remember(found))
+    return CheckAnswer(found)
 
 
 def expected_hash(text: str, name: str) -> str | None:

@@ -153,16 +153,6 @@ def test_every_failed_check_answers_the_same_nothing(refusal: Any) -> None:
     assert answer.is_current is False  # "we never asked" is not "you are current"
 
 
-def test_a_failed_check_keeps_the_update_an_earlier_one_found() -> None:
-    updater.remember(an_update())
-
-    answer = updater.check(session=FakeSession(OSError("offline")), current_version="1.1.0")
-
-    assert answer.update == an_update()
-    assert updater.pending() == an_update()
-    updater.remember(None)
-
-
 # --- step 5: the checksum --------------------------------------------------
 
 
@@ -279,30 +269,6 @@ def test_an_installer_that_will_not_start_gives_the_mutex_back(tmp_path: Path) -
     # copy waiting to happen.
     assert started is False
     assert order == ["released", "reclaimed"]
-
-
-# --- what the screens ask for ----------------------------------------------
-
-
-def test_the_found_update_is_remembered_for_the_screen_that_shows_it() -> None:
-    updater.remember(None)
-    assert updater.pending() is None
-
-    updater.remember(an_update())
-    assert updater.pending() == an_update()
-
-    updater.remember(None)
-    assert updater.pending() is None
-
-
-def test_a_check_that_finds_something_remembers_it() -> None:
-    updater.remember(None)
-    session = FakeSession(FakeResponse(payload=release_payload()))
-
-    updater.check(session=session, current_version="1.1.0")
-
-    assert updater.pending() == an_update()
-    updater.remember(None)
 
 
 def test_a_second_download_clears_the_installer_the_first_one_left(tmp_path: Path) -> None:

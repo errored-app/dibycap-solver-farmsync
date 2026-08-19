@@ -14,7 +14,9 @@ tested without a window:
 - `read_credit` — one re-check, as header text and a red line.
 - `panel_of` — one `RunSnapshot`, as every word and bar in the left panel.
 - `table_rows` — the finished accounts, as the rows of the table.
-- `update_bar` — the update the startup check found, as the bar across the top.
+
+The bar across the top is the one thing on this screen Home does not decide:
+`ui.update_offer` owns it, and Home paints whatever `offer.view()` says.
 
 `build` is the thin screen on top of them. Spec 4.4 shapes it: every control is
 created once, and the 5 Hz refresh only changes text, colour and visibility. A
@@ -26,20 +28,17 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from enum import Enum
-from pathlib import Path
 from typing import Any, Callable
 
 from nicegui import app as native_app
 from nicegui import run, ui
 from nicegui.events import KeyEventArguments
 
-from .. import credit, engine, keys, updater
+from .. import credit, engine, keys
 from ..engine.snapshot import AccountRow, RunSnapshot, RunState
 from ..errors import AppError, ErrorCode
 from ..keys import KeyCheck
-from ..updater import Update  # the type only: every call goes through `updater`
-from . import messages
+from . import messages, update_offer
 
 # Roles, not colours: `ui.theme` decides what each one looks like in the theme
 # the user picked, so a low balance stays a warning on all five.
@@ -115,56 +114,6 @@ class Panel:
     failed: str
     credit: str
     low: bool
-
-
-class UpdateStage(Enum):
-    """Where an offered update has got to. One name, not three booleans."""
-
-    READY = "ready"  # waiting for the button
-    LOCKED = "locked"  # a run is going, and an install would kill it
-    DOWNLOADING = "downloading"
-    FAILED = "failed"
-
-
-# The sentence under the headline. READY has nothing to add, so it says nothing.
-UPDATE_NOTE: dict[UpdateStage, str] = {
-    UpdateStage.READY: "",
-    UpdateStage.LOCKED: messages.UPDATE_LOCKED,
-    UpdateStage.DOWNLOADING: messages.UPDATE_DOWNLOADING,
-    UpdateStage.FAILED: messages.UPDATE_FAILED,
-}
-
-# A failed download may be tried again; the other two dead stages may not.
-PRESSABLE = frozenset({UpdateStage.READY, UpdateStage.FAILED})
-
-
-@dataclass(frozen=True)
-class UpdateBar:
-    """What the bar across the top of Home shows (spec 4.2, 12).
-
-    Not a dialog, and it never blocks: it says a version is ready and offers one
-    button. An update is refused mid-run — an install during a run would kill the
-    run — so the button is dead while a run is going and the note says why.
-    """
-
-    visible: bool
-    headline: str
-    note: str
-    button_enabled: bool
-    progress_visible: bool
-    fraction: float
-
-
-def update_bar(update: Update | None, stage: UpdateStage, fraction: float = 0.0) -> UpdateBar:
-    """One found update at one stage, as every word and bar in the strip."""
-    return UpdateBar(
-        visible=update is not None,
-        headline=messages.update_ready(update.version) if update else "",
-        note=UPDATE_NOTE[stage],
-        button_enabled=stage in PRESSABLE,
-        progress_visible=stage is UpdateStage.DOWNLOADING,
-        fraction=fraction,
-    )
 
 
 _last_credit: Credit | None = None
@@ -293,6 +242,7 @@ def build(
     speed_percent: int,
     on_settings: Callable[[], None],
     run_engine: engine.Engine | None = None,
+    offer: update_offer.UpdateOffer | None = None,
 ) -> None:
     """Draw the screen, start the background re-check, and wire the controls.
 
@@ -301,7 +251,8 @@ def build(
     """
     global _showing
     worker = run_engine if run_engine is not None else engine.current()
-    state = _Screen(worker, api_key, farm_token, speed_percent)
+    offer = offer if offer is not None else update_offer.current()
+    state = _Screen(worker, api_key, farm_token, speed_percent, offer)
     _showing = state
 
     _update_strip(state)
@@ -363,21 +314,21 @@ class _Screen:
     update_progress: ui.linear_progress
 
     def __init__(
-        self, worker: engine.Engine, api_key: str, farm_token: str, speed_percent: int
+        self,
+        worker: engine.Engine,
+        api_key: str,
+        farm_token: str,
+        speed_percent: int,
+        offer: update_offer.UpdateOffer,
     ) -> None:
         self._worker = worker
+        self._offer = offer
         self._api_key = api_key
         self._farm_token = farm_token
         self._speed_percent = speed_percent
         self._can_start = False
         self._rows: list[AccountRow] = []
         self._round_shown = 0
-        self._update: Update | None = updater.pending()
-        self._downloading = False
-        self._download_failed = False
-        # Written from the download thread, read by the 5 Hz refresh. A float is
-        # the whole of the shared state, so no lock buys anything here.
-        self._fraction = 0.0
         self.closing: ui.dialog | None = None
         self._close_answered = False
 
@@ -404,72 +355,16 @@ class _Screen:
     # --- the update bar ---------------------------------------------------
 
     async def look_for_update(self) -> None:
-        """The startup check, in a worker thread. Silent when nothing is found.
-
-        Skipped during a run: Home is rebuilt on every hop back from Settings, so
-        without this a check would run in the middle of one (spec 12).
-        """
-        if self._running():
-            return
-
-        answer = await run.io_bound(updater.check)
-        if answer is None or answer.update is None:  # None when NiceGUI cancels
-            return
-        self._update = answer.update
-        self._show_update()
+        """The startup check of spec 12. The offer decides what it changes."""
+        await self._offer.check()
+        self._show_update(self._offer.view())
 
     async def press_update(self) -> None:
-        """Download, check, hand over. Any failure leaves this version running."""
-        update = self._update
-        if update is None or self._running():
-            return
+        """Download, check, hand over. All four steps belong to the offer."""
+        await self._offer.press()
+        self._show_update(self._offer.view())
 
-        self._downloading, self._download_failed, self._fraction = True, False, 0.0
-        self._show_update()
-
-        setup = await run.io_bound(updater.download, update, on_progress=self._downloaded)
-        self._downloading = False
-
-        if setup is None:
-            self._download_failed = True
-            self._show_update()
-            return
-
-        # Asked again, because a download is minutes long and Start was live for
-        # every one of them. Installing now would kill the run that just began.
-        if self._running():
-            self._show_update()
-            return
-
-        self._hand_over(setup, update.version)
-
-    def _hand_over(self, setup: Path, version: str) -> None:
-        """Spec 12: the app exits itself, and the installer starts as it goes.
-
-        Hung on the shutdown rather than run here, so the window is already gone
-        when Setup starts replacing the folder the app runs from.
-        """
-        native_app.on_shutdown(lambda: updater.install(setup))
-        _log.info("update handed over version=%s", version)
-        native_app.shutdown()
-
-    def _downloaded(self, fraction: float) -> None:
-        """Called from the download thread. The refresh paints it."""
-        self._fraction = fraction
-
-    def _running(self) -> bool:
-        return self._worker.snapshot().state is not RunState.IDLE
-
-    def _stage(self) -> UpdateStage:
-        """Which of the four stages the offered update is at."""
-        if self._downloading:
-            return UpdateStage.DOWNLOADING
-        if self._download_failed:
-            return UpdateStage.FAILED
-        return UpdateStage.LOCKED if self._running() else UpdateStage.READY
-
-    def _show_update(self) -> None:
-        bar = update_bar(self._update, self._stage(), self._fraction)
+    def _show_update(self, bar: update_offer.UpdateBar) -> None:
         self.update_row.set_visibility(bar.visible)
         self.update_headline.set_text(bar.headline)
         self.update_note.set_text(bar.note)
@@ -529,7 +424,7 @@ class _Screen:
         self._collect(snapshot)
         self._show_panel(panel_of(snapshot, self._can_start))
         self._show_table()
-        self._show_update()
+        self._show_update(self._offer.view())
 
     def _collect(self, snapshot: RunSnapshot) -> None:
         """Keep this round's finished accounts, and drop the round before it."""

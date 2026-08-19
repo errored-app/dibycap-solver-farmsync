@@ -30,6 +30,7 @@ REQUIRED_FILES = [
     "ui/home.py",
     "ui/close_guard.py",
     "ui/settings.py",
+    "ui/update_offer.py",
     "ui/messages.py",
     "ui/theme.py",
 ]

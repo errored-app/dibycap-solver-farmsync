@@ -25,12 +25,12 @@ from __future__ import annotations
 import logging
 from typing import Callable
 
-from nicegui import run, ui
+from nicegui import ui
 
 from .. import config, diagnostics, engine, updater
 from .._version import APP_NAME, VERSION
 from ..errors import AppError
-from . import home, messages, setup, theme
+from . import home, messages, setup, theme, update_offer
 
 GOOD_COLOUR = "fs-ok"
 BAD_COLOUR = "fs-bad"
@@ -43,8 +43,12 @@ _log = logging.getLogger(__name__)
 
 
 def is_running() -> bool:
-    """Whether a run is going, which is what locks the keys and Speed (spec 5.7)."""
-    return engine.current().snapshot().state is not engine.RunState.IDLE
+    """Whether a run is going, which is what locks the keys and Speed (spec 5.7).
+
+    The same question the update offer asks before it installs, so it is asked
+    in the same words — one spelling of "a run is going" for the whole app.
+    """
+    return update_offer.run_is_going()
 
 
 def build(
@@ -52,6 +56,7 @@ def build(
     theme_key: str,
     on_back: Callable[[], None],
     on_forget: Callable[[], None],
+    offer: update_offer.UpdateOffer | None = None,
 ) -> None:
     """Draw the screen.
 
@@ -63,8 +68,12 @@ def build(
 
     The theme comes in the same way the speed does — one stored value, read
     here, written straight back to the file when the user picks another.
+
+    `offer` is the one the bar on Home reads. A check made here goes through it,
+    so what this screen finds is already on offer by the time the user hops back.
     """
     locked = is_running()
+    offer = offer if offer is not None else update_offer.current()
 
     with ui.column().classes("w-full items-stretch gap-6 p-8"):
         with ui.row().classes("items-center gap-3"):
@@ -80,7 +89,7 @@ def build(
         _keys_section(on_forget, locked)
         _speed_section(speed_percent, locked)
         _theme_section(theme_key)
-        _updates_section(locked)
+        _updates_section(locked, offer)
         _support_section()
 
         ui.label(f"{APP_NAME} {VERSION}").classes("text-xs fs-muted")
@@ -237,8 +246,12 @@ def _theme_tile(
     return tile, dot
 
 
-def _updates_section(locked: bool) -> None:
+def _updates_section(locked: bool, offer: update_offer.UpdateOffer) -> None:
     """Spec 12's manual check. It reports; it never installs from this screen.
+
+    The check goes through the offer, never straight to `updater`: check-then-keep
+    is one rule with one owner, and two callers doing it by hand is a rule that
+    gets forgotten the third time someone adds a check.
 
     Locked during a run with the keys and Speed: spec 12 asks for no check at all
     while a run is going, and the bar that would install what it found is refused
@@ -255,21 +268,21 @@ def _updates_section(locked: bool) -> None:
         # start a second check (spec 13, "disabled buttons").
         check.set_enabled(False)
         _say(note, messages.SETTINGS_CHECKING_UPDATE, good=True)
-        answer = await run.io_bound(updater.check)
+        answer = await offer.check()
         check.set_enabled(True)
-        _say(note, _update_answer(answer), good=answer is not None and answer.reached_github)
+        _say(note, _update_answer(answer), good=answer.reached_github)
 
     check.on("click", press_check)
     check.set_enabled(not locked)
 
 
-def _update_answer(answer: updater.CheckAnswer | None) -> str:
+def _update_answer(answer: updater.CheckAnswer) -> str:
     """The one sentence a manual check leaves behind.
 
     A check nobody could make must not read as "you have the newest version": the
     user pressed a button and is owed the difference.
     """
-    if answer is None or not answer.reached_github:
+    if not answer.reached_github:
         return messages.SETTINGS_CHECK_FAILED
     if answer.update is None:
         return messages.SETTINGS_UP_TO_DATE
