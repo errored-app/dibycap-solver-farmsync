@@ -11,6 +11,8 @@ Three rules shape the worker body at the bottom of the file:
   (spec 2), so a failure is an outcome, not an exception.
 - A terminal error is about the key, so it is raised at once and never retried
   (spec 5.5). The round loop ends the run on the first one.
+- A service fault is dibycap's, not the key's, so the round loop waits it out
+  rather than ending the run (ADR 0003).
 - Nothing here prints. A windowed build has no console (spec 2).
 """
 from __future__ import annotations
@@ -23,7 +25,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 from .. import credit
-from ..errors import AppError, ErrorCode, is_terminal
+from ..errors import AppError, ErrorCode, is_terminal, is_waitable
 from ..logging_setup import event
 
 # The engine holds no user copy of its own: every sentence a run puts on screen
@@ -39,6 +41,11 @@ from .snapshot import IDLE, AccountRow, Result, RunSnapshot, RunState
 # a test would use, so a test that needs a quick round patches these instead.
 REST_SECONDS = 60.0
 CREDIT_SECONDS = 10.0
+
+# How long Waiting sits between probes (ADR 0003). Its own constant, not
+# `REST_SECONDS`: a rest is the pace of the work, and this is the pace of a knock
+# on a door that is not answering.
+WAIT_SECONDS = 60.0
 
 # Discovery is all or nothing now, so a failure is retried quietly rather than
 # skipped per device: one try plus two retries (spec 5.5).
@@ -89,6 +96,9 @@ class Engine:
     def __init__(self) -> None:
         self._snapshot = IDLE
         self._stopping = threading.Event()
+        # Set when a service fault has been seen: the workers take no new account,
+        # but the run is not over. Cleared once the round has drained.
+        self._pausing = threading.Event()
         self._loop: threading.Thread | None = None
         self._accounts: queue.Queue[dict[str, Any]] = queue.Queue()
         self._finished: queue.Queue[tuple[str, Outcome | AppError]] = queue.Queue()
@@ -109,6 +119,7 @@ class Engine:
             return
 
         self._stopping.clear()
+        self._pausing.clear()
         _empty(self._accounts)
         _empty(self._finished)
         _empty(self._rows)
@@ -164,12 +175,19 @@ class Engine:
         try:
             threads = self._thread_count(client, speed_percent)
         except AppError as error:
-            # Spec 5.4: a `/balance` that does not answer refuses the run. There
-            # is no fallback thread count, so nothing is discovered and no worker
-            # starts.
-            _log.warning(event("run", phase="refused", code=error.code.value, detail=error.detail))
-            self._finish(error)
-            return
+            if not is_waitable(error):
+                # Spec 5.4: a `/balance` that does not answer refuses the run.
+                # There is no fallback thread count, so nothing is discovered and
+                # no worker starts. A key fault and a zero balance land here.
+                _log.warning(
+                    event("run", phase="refused", code=error.code.value, detail=error.detail)
+                )
+                self._finish(error)
+                return
+            # dibycap itself is down. The run starts anyway and waits it out
+            # (ADR 0003); the thread count is read again on the way back.
+            _log.info(event("run", phase="waiting-at-start", code=error.code.value))
+            threads = 0
 
         _log.info(event("run", phase="start", threads=threads, speed=speed_percent))
         farm = Farmsync(farm_token)
@@ -182,9 +200,24 @@ class Engine:
                 _log.info(event("round", number=round_number, phase="start"))
 
                 found = self._discover(client, farm)
+                fault: AppError | None = None
+                probe: Callable[[], bool] = lambda: False
                 if found:
-                    terminal = self._solve_round(client, found, threads)
+                    if threads <= 0:
+                        threads, fault = self._read_threads(client, speed_percent)
+                        probe = lambda: self._read_threads(client, speed_percent)[0] > 0
+                    if fault is None:
+                        fault = self._solve_round(client, found, threads)
+                        account = found[0]
+                        probe = lambda: self._probe(client, account)
                 self._log_round_end(round_number, found)
+
+                if fault is not None and is_waitable(fault):
+                    if not self._wait_out(fault, probe):
+                        break
+                    continue  # a fresh round, which discovers again (ADR 0003)
+
+                terminal = fault
                 if terminal is not None:
                     break
                 if self._stopping.is_set():
@@ -217,6 +250,20 @@ class Engine:
         if at_once <= 0:
             raise AppError(ErrorCode.UNKNOWN, "balance carried no max_concurrent")
         return credit.threads(at_once, speed_percent)
+
+    def _read_threads(self, client: Dibycap, speed_percent: int) -> tuple[int, AppError | None]:
+        """The thread count, or the service fault that stopped us reading it.
+
+        Only reached when a run started while dibycap was down, or came back from
+        Waiting: a healthy run reads `/balance` once and keeps the answer. It is
+        also the probe Waiting knocks with when `/balance` is the call that failed.
+        """
+        try:
+            return self._thread_count(client, speed_percent), None
+        except AppError as error:
+            if not is_waitable(error):
+                raise
+            return 0, error
 
     def _discover(self, client: Dibycap, farm: Farmsync) -> list[dict[str, Any]] | None:
         """This round's eligible accounts. `None` means farmsync was not reached.
@@ -275,17 +322,18 @@ class Engine:
         for worker in workers:
             worker.start()
 
-        terminal: AppError | None = None
+        fault: AppError | None = None
         while any(worker.is_alive() for worker in workers):
-            terminal = self._drain(client) or terminal
-        terminal = self._drain(client) or terminal  # the last accounts land after the last look
+            fault = self._drain(client) or fault
+        fault = self._drain(client) or fault  # the last accounts land after the last look
 
         _empty(self._accounts)  # a stop leaves accounts nobody will take
-        return terminal
+        self._pausing.clear()  # the workers are gone; the flag has done its job
+        return fault
 
     def _work(self, client: Dibycap) -> None:
         """One worker thread: take an account, solve it, put the outcome back."""
-        while not self._stopping.is_set():
+        while not self._stopping.is_set() and not self._pausing.is_set():
             try:
                 account = self._accounts.get_nowait()
             except queue.Empty:
@@ -302,21 +350,29 @@ class Engine:
                 return
 
     def _drain(self, client: Dibycap) -> AppError | None:
-        """Take in what the workers finished, then refresh credit if it is due."""
-        terminal: AppError | None = None
+        """Take in what the workers finished, then refresh credit if it is due.
+
+        Both faults stop new accounts from starting and let the in-flight ones
+        land — the polite stop of spec 5.2. What differs is what the round loop
+        does next: a key fault ends the run, a service fault is waited out.
+        """
+        fault: AppError | None = None
         try:
             while True:
                 name, answer = self._finished.get(timeout=DRAIN_SECONDS)
                 if isinstance(answer, AppError):
-                    terminal = terminal or answer
-                    self._stopping.set()  # no new account starts after a key fault
+                    fault = fault or answer
+                    if is_waitable(answer):
+                        self._pausing.set()
+                    else:
+                        self._stopping.set()
                 else:
                     self._count(name, answer)
         except queue.Empty:
             pass
 
         self._refresh_credit(client)
-        return terminal
+        return fault
 
     def _count(self, username: str, outcome: Outcome) -> None:
         """Fold one finished account into the counters and into the table."""
@@ -359,6 +415,52 @@ class Engine:
         self._show_credit(balance)
         if credit.solves(balance) <= 0:
             raise AppError(ErrorCode.NO_CREDIT, "estimated_solves=0")
+
+    def _wait_out(self, fault: AppError, probe: Callable[[], bool]) -> bool:
+        """Sit in Waiting until dibycap answers again. `False` when the user stopped.
+
+        The wait has no end of its own (ADR 0003): a paused service comes back on
+        its own clock, so the only ways out are the service answering and the
+        Stop button. Farmsync is not called at all in here — that is the whole
+        point of holding an account to knock with.
+
+        The probe is always the call that failed. A solve that was refused is
+        knocked on with a solve, and a `/balance` that did not answer is knocked
+        on with a `/balance`: a probe of the other call would report a service
+        that is up while the run still cannot take a step.
+
+        Nothing the probe finds is counted. The round number, the table and the
+        three totals are left exactly as the interrupted round left them, because
+        the round is run again in full once the service is back.
+        """
+        _log.info(event("wait", phase="start", code=fault.code.value, detail=fault.detail))
+        self._set(state=RunState.WAITING, headline=_waiting_headline(fault), message="")
+
+        while not self._stopping.wait(WAIT_SECONDS):
+            if probe():
+                _log.info(event("wait", phase="end"))
+                return True
+
+        _log.info(event("wait", phase="stopped"))
+        return False
+
+    def _probe(self, client: Dibycap, account: dict[str, Any]) -> bool:
+        """One real account, sent to ask whether solving is back.
+
+        Any answer that is not a service fault means the service is answering,
+        a dead cookie included: the probe asks about dibycap, not about the
+        account. A key fault is raised, and the round loop ends the run on it.
+        """
+        try:
+            solve_account(client, account)
+        except AppError as error:
+            if not is_waitable(error):
+                raise
+            _log.info(event("probe", result="down", code=error.code.value))
+            return False
+
+        _log.info(event("probe", result="up"))
+        return True
 
     def _rest(self, client: Dibycap, headline: str) -> None:
         """The fixed pause between rounds. A stop cuts it short (spec 5.2)."""
@@ -449,6 +551,17 @@ def _end_headline(terminal: AppError | None) -> str:
     return messages.for_code(terminal.code)
 
 
+def _waiting_headline(fault: AppError) -> str:
+    """What Waiting says, which is why we are waiting.
+
+    Two sentences, not one: a paused service and a service that cannot be reached
+    look the same to the engine and read nothing alike to the user.
+    """
+    if fault.code is ErrorCode.SERVICE_PAUSED:
+        return messages.RUN_WAITING_PAUSED
+    return messages.RUN_WAITING_UNREACHABLE
+
+
 def _rest_headline(found: list[dict[str, Any]] | None) -> str:
     """What the rest says, which is how the round that just ended went.
 
@@ -482,11 +595,14 @@ def solve_account(
     """Send one account to the solver and name what happened.
 
     Tries up to `MAX_ATTEMPTS` times. The retry is deliberately invisible: the UI
-    is never told an attempt is a second try (spec 5.6). Two answers end it
-    early — a terminal error, which the round loop must see at once, and a
-    hopeless account, which a second attempt cannot change.
+    is never told an attempt is a second try (spec 5.6). Three answers end it
+    early — a terminal error, which the round loop must see at once; a service
+    fault, which no number of attempts can fix; and a hopeless account, which a
+    second attempt cannot change.
 
-    Raises `AppError` for a terminal fault, and for nothing else.
+    Raises `AppError` for a key fault and for a service fault, and for nothing
+    else. A retry against a down service would only be a slower way to reach the
+    same answer, and this is also the probe Waiting knocks with.
     """
     account_id = str(account.get("id", ""))
     cookie = str(account.get("cookie") or "")
@@ -496,12 +612,12 @@ def solve_account(
         try:
             return _named(account_id, _read(client.solve(cookie)))
         except AppError as error:
-            if is_terminal(error):
+            if is_terminal(error) or is_waitable(error):
                 _log.info(
                     event(
                         "solve",
                         account=account_id,
-                        result="terminal",
+                        result="service" if is_waitable(error) else "terminal",
                         code=error.code.value,
                         detail=error.detail,
                     )

@@ -118,13 +118,20 @@ class Dibycap:
                 timeout=TIMEOUT_SECONDS,
             )
         except Exception as error:  # any transport failure reads the same way
-            raise AppError(ErrorCode.NO_INTERNET, f"dibycap {type(error).__name__}") from error
+            raise AppError(
+                ErrorCode.NO_INTERNET, f"dibycap {type(error).__name__}", service=True
+            ) from error
 
 
 def _refusal(payload: dict[str, Any]) -> AppError:
-    """The typed error a refused solve becomes, keeping the raw dibycap code."""
+    """The typed error a refused solve becomes, keeping the raw dibycap code.
+
+    Only a paused service is marked `service`: every other refusal is about the
+    key or about the account, and neither is fixed by waiting (ADR 0003).
+    """
     code = _code_of(payload)
-    return AppError(TERMINAL_CODES.get(code, ErrorCode.UNKNOWN), code)
+    mapped = TERMINAL_CODES.get(code, ErrorCode.UNKNOWN)
+    return AppError(mapped, code, service=mapped is ErrorCode.SERVICE_PAUSED)
 
 
 def _code_of(payload: dict[str, Any]) -> str:
@@ -152,9 +159,9 @@ def _as_object(response: Any) -> dict[str, Any]:
     try:
         payload = response.json()
     except Exception as error:
-        raise AppError(ErrorCode.UNKNOWN, "dibycap sent no JSON") from error
+        raise AppError(ErrorCode.UNKNOWN, "dibycap sent no JSON", service=True) from error
     if not isinstance(payload, dict):
-        raise AppError(ErrorCode.UNKNOWN, "dibycap sent an unexpected shape")
+        raise AppError(ErrorCode.UNKNOWN, "dibycap sent an unexpected shape", service=True)
     return payload
 
 

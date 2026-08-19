@@ -12,6 +12,11 @@ came back `service_paused`. The key was good throughout.
 `SERVICE_PAUSED` stays **terminal** (spec 5.5): the first one ends the run,
 because every later account is refused the same way.
 
+> Superseded on this one point by
+> [ADR 0003](0003-a-run-waits-out-a-down-solve-service.md): a paused service is
+> no longer terminal — the run waits it out. The sixth code, and everything else
+> here, stands.
+
 ## Considered options
 
 **Fold it into `BAD_API_KEY`** (what #22 had to do, because it could not change

@@ -535,3 +535,173 @@ def test_stopping_an_idle_engine_does_nothing() -> None:
     engine.stop()
 
     assert engine.snapshot().state is RunState.IDLE
+
+
+# --- Waiting out a down solve service (ADR 0003) ---------------------------
+
+PAUSED = AppError(ErrorCode.SERVICE_PAUSED, "service_paused", service=True)
+UNREACHABLE = AppError(ErrorCode.NO_INTERNET, "dibycap ConnectionError", service=True)
+FAST_WAIT = 0.01
+
+
+class Service:
+    """A solve that is down until it is told the service came back."""
+
+    def __init__(self, fault: AppError | None) -> None:
+        self.fault = fault
+        self.attempts = 0
+
+    def __call__(self, cookie: str) -> dict[str, Any]:
+        self.attempts += 1
+        if self.fault is not None:
+            raise self.fault
+        return {"total_ms": 900, "solve_ms": 0}
+
+    def comes_back(self) -> None:
+        self.fault = None
+
+
+def waiting(
+    monkeypatch: pytest.MonkeyPatch,
+    engines: list[Engine],
+    fault: AppError = PAUSED,
+    balances: tuple[dict[str, Any] | Exception, ...] = (),
+) -> tuple[Engine, Service, FakeFarmsync]:
+    """A started engine whose solve service is down, parked in Waiting."""
+    service = Service(fault)
+    engine, _, farm = build(
+        monkeypatch,
+        engines,
+        client=FakeDibycap(*balances, solve=service),
+        farm=FakeFarmsync(accounts(3)),
+    )
+    monkeypatch.setattr(run, "WAIT_SECONDS", FAST_WAIT)
+
+    engine.start(API_KEY, TOKEN, 100)
+    assert wait_for(lambda: engine.snapshot().state is RunState.WAITING), engine.snapshot()
+    return engine, service, farm
+
+
+def test_a_paused_service_waits_instead_of_ending_the_run(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """The whole point of ADR 0003: the run does not die on a fault it cannot fix."""
+    engine, _, _ = waiting(monkeypatch, engines)
+
+    picture = engine.snapshot()
+    assert picture.state is RunState.WAITING
+    assert picture.headline == messages.RUN_WAITING_PAUSED
+
+
+def test_a_service_that_cannot_be_reached_says_so_instead(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """Someone whose wifi is off must not read that the service is paused."""
+    engine, _, _ = waiting(monkeypatch, engines, fault=UNREACHABLE)
+
+    assert engine.snapshot().headline == messages.RUN_WAITING_UNREACHABLE
+
+
+def test_farmsync_is_left_alone_while_the_run_waits(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """The probe knocks on dibycap with a held account, never on farmsync."""
+    engine, service, farm = waiting(monkeypatch, engines)
+
+    assert wait_for(lambda: service.attempts >= 5)  # five knocks in
+    assert farm.calls == 1  # and still one discovery, not five
+
+
+def test_waiting_counts_nothing_it_probes_with(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """A probe is a knock on a door, not work: no row, no counter, no round."""
+    engine, service, _ = waiting(monkeypatch, engines)
+
+    assert wait_for(lambda: service.attempts >= 5)
+    picture = engine.snapshot()
+    assert (picture.joined, picture.solved, picture.failed) == (0, 0, 0)
+    assert picture.round_number == 1
+    assert engine.take_new_rows() == []
+
+
+def test_the_run_carries_on_when_the_service_comes_back(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """A clean round, discovered again, and the probe's own account not counted."""
+    engine, service, farm = waiting(monkeypatch, engines)
+
+    service.comes_back()
+
+    assert wait_for(lambda: engine.snapshot().state is RunState.RESTING), engine.snapshot()
+    picture = engine.snapshot()
+    assert picture.round_number == 2
+    assert picture.joined == 3  # the three accounts of round 2, not the probe as a fourth
+    assert farm.calls == 2  # discovered again on the way out of Waiting
+
+
+def test_stop_ends_a_waiting_run(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """Waiting is a run like any other, so the Stop button still owns it."""
+    engine, _, _ = waiting(monkeypatch, engines)
+
+    engine.stop()
+
+    assert wait_for(lambda: engine.snapshot().state is RunState.IDLE), engine.snapshot()
+
+
+def test_a_waiting_run_is_a_run_the_window_asks_about(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """Spec 5.3's close question reads `is not IDLE`, and Waiting is not Idle."""
+    from farmsync_solver.ui import home
+
+    engine, _, _ = waiting(monkeypatch, engines)
+
+    assert home.should_confirm_close(engine.snapshot().state)
+
+
+def test_a_key_fault_found_while_waiting_still_ends_the_run(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """Waiting forever on a key nobody but the user can fix would be cruel."""
+    engine, service, _ = waiting(monkeypatch, engines)
+
+    service.fault = AppError(ErrorCode.BAD_API_KEY, "invalid_api_key")
+
+    assert wait_for(lambda: engine.snapshot().state is RunState.IDLE), engine.snapshot()
+    assert engine.snapshot().headline == messages.for_code(ErrorCode.BAD_API_KEY)
+
+
+def test_a_run_starts_and_waits_when_balance_itself_is_down(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """Start with dibycap fully down: one discovery, then a quiet wait."""
+    down = AppError(ErrorCode.NO_INTERNET, "dibycap ConnectionError", service=True)
+    client = FakeDibycap(down, down, down, dict(BALANCE), solve=Service(None))
+    engine, _, farm = build(monkeypatch, engines, client=client, farm=FakeFarmsync(accounts(2)))
+    monkeypatch.setattr(run, "WAIT_SECONDS", FAST_WAIT)
+
+    engine.start(API_KEY, TOKEN, 100)
+    assert wait_for(lambda: engine.snapshot().state is RunState.WAITING), engine.snapshot()
+    assert engine.snapshot().headline == messages.RUN_WAITING_UNREACHABLE
+    assert farm.calls == 1  # discovered once, then left alone
+
+    # The fourth `/balance` answers, so the run picks itself up.
+    assert wait_for(lambda: engine.snapshot().state is RunState.RESTING), engine.snapshot()
+    assert engine.snapshot().joined == 2
+
+
+def test_a_balance_that_refuses_the_key_still_refuses_the_run(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """Only a service fault waits. A key fault at Start is refused as before."""
+    refused = AppError(ErrorCode.BAD_API_KEY, "invalid_api_key")
+    engine, _, farm = build(monkeypatch, engines, client=FakeDibycap(refused))
+
+    engine.start(API_KEY, TOKEN, 100)
+
+    assert wait_for(lambda: engine.snapshot().state is RunState.IDLE), engine.snapshot()
+    assert engine.snapshot().headline == messages.for_code(ErrorCode.BAD_API_KEY)
+    assert farm.calls == 0

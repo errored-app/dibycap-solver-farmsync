@@ -33,6 +33,10 @@ class RunState(str, Enum):
     DISCOVERING = "discovering"
     SOLVING = "solving"
     RESTING = "resting"
+    # The solve service is down and the run is sitting it out (ADR 0003). It is a
+    # run like any other: Stop works, the close question is asked, no update is
+    # offered — every "is a run on?" test in the UI reads `is not IDLE`.
+    WAITING = "waiting"
     STOPPING = "stopping"
 
 

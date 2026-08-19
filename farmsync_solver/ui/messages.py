@@ -63,6 +63,10 @@ RUN_STOPPING = "Stopping. Finishing the accounts already started…"
 RUN_STOPPED = "Stopped."
 RUN_NO_ACCOUNTS = "No accounts to check this round."
 RUN_NO_FARMSYNC = "Could not reach farmsync. Trying again in a minute."
+# The two sentences of the Waiting state (ADR 0003). Two, not one: someone whose
+# wifi is off must not read that the service is paused.
+RUN_WAITING_PAUSED = "The captcha service is paused. Waiting for it to come back…"
+RUN_WAITING_UNREACHABLE = "Could not reach the captcha service. Trying again every minute."
 RUN_CRASHED = "Something went wrong and the run stopped."
 
 # What one row's status badge reads (spec 4.2). Keyed by the *value* of

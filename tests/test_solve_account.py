@@ -8,7 +8,7 @@ import pytest
 
 from farmsync_solver.engine import run
 from farmsync_solver.engine.dibycap import COOKIE_FIELD, HOPELESS_CODES, Dibycap
-from farmsync_solver.errors import AppError, ErrorCode, is_terminal
+from farmsync_solver.errors import AppError, ErrorCode, is_terminal, is_waitable
 
 from fakes import FakeResponse, FakeSession, Queue
 
@@ -109,7 +109,6 @@ def test_a_failed_solve_keeps_the_raw_dibycap_code() -> None:
         ("invalid_api_key", ErrorCode.BAD_API_KEY),
         ("key_disabled", ErrorCode.BAD_API_KEY),
         ("key_expired", ErrorCode.BAD_API_KEY),
-        ("service_paused", ErrorCode.SERVICE_PAUSED),
         ("insufficient_balance", ErrorCode.NO_CREDIT),
     ],
 )
@@ -121,6 +120,40 @@ def test_a_terminal_code_becomes_a_typed_error(raw: str, code: ErrorCode) -> Non
     assert caught.value.code is code
     assert caught.value.detail == raw
     assert is_terminal(caught.value)
+    assert not is_waitable(caught.value)
+
+
+def test_a_paused_service_is_waited_out_not_terminal() -> None:
+    """ADR 0003: the key is fine, so the run waits rather than ending."""
+    session = FakeSession(answers(refused("service_paused")))
+
+    with pytest.raises(AppError) as caught:
+        client(session).solve(COOKIE)
+    assert caught.value.code is ErrorCode.SERVICE_PAUSED
+    assert is_waitable(caught.value)
+    assert not is_terminal(caught.value)
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        FakeResponse(payload=None),  # a body that is not JSON at all
+        FakeResponse(payload=["not", "an", "object"]),
+        RuntimeError("connection reset"),  # the transport itself
+    ],
+)
+def test_a_service_that_answers_nothing_usable_is_waitable(answer: Any) -> None:
+    """A dibycap that cannot hold a conversation is dibycap's fault, not the key's."""
+    session = FakeSession(answer)
+
+    with pytest.raises(AppError) as caught:
+        client(session).balance()
+    assert is_waitable(caught.value)
+
+
+def test_an_engine_bug_is_never_waitable() -> None:
+    """`from_exception` is where a bug becomes an AppError, and a bug does not heal."""
+    assert not is_waitable(AppError.from_exception(TypeError("engine bug")))
 
 
 def test_a_terminal_code_is_read_whole_not_as_a_substring() -> None:

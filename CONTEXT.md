@@ -31,6 +31,7 @@ The named phase a run is in:
 - **Discovering** — fetching accounts and devices from farmsync. Shows a spinner.
 - **Solving** — sending eligible accounts to the solver. Shows a progress bar.
 - **Resting** — the fixed pause between rounds.
+- **Waiting** — the solve service is down and the run is sitting it out.
 - **Stopping** — no new accounts start; in-flight solves are finishing.
 
 ## Polite stop
@@ -46,11 +47,32 @@ app closes with no question.
 
 ## Terminal error
 
-A solver error that is not about the **account** — for example an invalid key,
-no balance, or a paused solve service. The first terminal error ends the run,
-because every later account would fail the same way. Most terminal errors are
-about the key; a paused service is not, and says so
-([ADR 0002](docs/adr/0002-a-paused-solve-service-gets-its-own-code.md)).
+A solver error nobody but the user can fix — an invalid key, or no balance. The
+first terminal error ends the run, because every later account would fail the
+same way and no amount of waiting changes that. A paused service used to be one
+and is now a **service fault** instead
+([ADR 0003](docs/adr/0003-a-run-waits-out-a-down-solve-service.md)).
+
+## Service fault
+
+A solver error that is about the **solve service** itself — it is paused, or it
+did not answer. Neither the key nor the account is at fault, and it fixes itself
+in time, so the run **waits** it out rather than ending. Farmsync errors are not
+service faults: they have their own quiet retry inside a round.
+
+## Waiting
+
+The run state a **service fault** puts a run into. The run holds the accounts it
+already discovered, stops taking new ones, and lets the in-flight solves land.
+It then waits, without an end of its own, until the service answers or the user
+presses Stop. Farmsync is not called at all while a run waits.
+
+## Probe
+
+The single call a **waiting** run makes each minute to ask whether the service is
+back. It is always the same call that failed — a solve, or a credit read. A probe
+is a knock on a door, never work: it moves no counter, adds no row, and starts no
+round.
 
 ## Attempt vs solve
 
