@@ -7,6 +7,13 @@ from types import ModuleType
 import pytest
 
 import main
+from farmsync_solver import single_instance
+
+
+@pytest.fixture(autouse=True)
+def free_mutex(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One test process launches the app many times; the real mutex is taken once."""
+    monkeypatch.setattr(single_instance, "claim", lambda: True)
 
 
 def test_selftest_exits_zero_and_opens_no_window(
@@ -72,3 +79,30 @@ def test_logging_is_configured_before_the_ui_is_imported(
     monkeypatch.undo()
     text = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.glob("*.log"))
     assert "nicegui assets are missing" in text
+
+
+def test_a_second_launch_is_refused_before_the_window(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ui_app: ModuleType
+) -> None:
+    def fail() -> None:
+        raise AssertionError("a second copy opened a window")
+
+    monkeypatch.setattr(ui_app, "start_window", fail)
+    monkeypatch.setattr(single_instance, "claim", lambda: False)
+
+    assert main.run([], log_dir=tmp_path) == 0
+    text = "\n".join(p.read_text(encoding="utf-8") for p in tmp_path.glob("*.log"))
+    assert "already running" in text
+
+
+def test_the_selftest_never_takes_the_mutex(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ui_app: ModuleType
+) -> None:
+    """--selftest opens no window, so a copy already running must not stop it."""
+    def fail() -> bool:
+        raise AssertionError("--selftest claimed the mutex")
+
+    monkeypatch.setattr(single_instance, "claim", fail)
+    monkeypatch.setattr(ui_app, "start_window", lambda: None)
+
+    assert main.run(["--selftest"], log_dir=tmp_path) == 0

@@ -16,6 +16,7 @@ REQUIRED_FILES = [
     "errors.py",
     "keys.py",
     "logging_setup.py",
+    "single_instance.py",
     "updater.py",
     "engine/__init__.py",
     "engine/run.py",

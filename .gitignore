@@ -23,3 +23,6 @@ Thumbs.db
 build/
 dist/
 *.spec
+
+# Downloaded by the release workflow, never committed.
+installer/MicrosoftEdgeWebview2Setup.exe

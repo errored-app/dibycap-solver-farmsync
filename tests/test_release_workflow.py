@@ -116,3 +116,44 @@ def test_every_action_is_pinned_to_a_major_version(steps: list[dict[str, Any]]) 
         uses = step.get("uses")
         if uses is not None:
             assert "@" in uses, f"{uses} is not pinned"
+
+
+def test_the_installer_is_built_by_iscc(commands: str) -> None:
+    stripped = commands.replace("\\", "/")
+
+    assert "iscc.exe" in stripped
+    assert "installer/FarmsyncSolver.iss" in stripped
+
+
+def test_the_installer_gets_the_version_from_the_tag(commands: str) -> None:
+    assert "/DAppVersion=${{ steps.version.outputs.version }}" in commands
+    assert "/DAppNumericVersion=${{ steps.version.outputs.numeric }}" in commands
+
+
+def test_a_failed_installer_build_fails_the_release(steps: list[dict[str, Any]]) -> None:
+    (build,) = [step for step in steps if "iscc.exe" in step.get("run", "")]
+
+    assert "throw" in build["run"]
+
+
+def test_the_webview2_bootstrapper_is_fetched_before_the_installer_is_built(
+    steps: list[dict[str, Any]],
+) -> None:
+    runs = [step.get("run", "") for step in steps]
+    fetch = next(i for i, run in enumerate(runs) if "MicrosoftEdgeWebview2Setup.exe" in run)
+    build = next(i for i, run in enumerate(runs) if "iscc.exe" in run)
+
+    assert fetch < build
+
+
+def test_the_setup_exe_is_published_and_checksummed(
+    steps: list[dict[str, Any]], commands: str
+) -> None:
+    (release,) = [step for step in steps if "softprops/action-gh-release" in step.get("uses", "")]
+    assert "FarmsyncSolver-Setup-${{ steps.version.outputs.version }}.exe" in release["with"]["files"]
+
+    # The checksums are taken after the installer exists, or its line is missing.
+    runs = [step.get("run", "") for step in steps]
+    build = next(i for i, run in enumerate(runs) if "iscc.exe" in run)
+    checksums = next(i for i, run in enumerate(runs) if "SHA256SUMS.txt" in run)
+    assert build < checksums

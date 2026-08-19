@@ -66,6 +66,26 @@ jobs:
           $name = "FarmsyncSolver-${{ steps.version.outputs.version }}-win64.zip"
           Compress-Archive -Path dist/FarmsyncSolver -DestinationPath "dist/$name"
 
+      # windows-latest carries no Inno Setup, and the installer is the only
+      # artifact a real user ever runs.
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      # The bootstrapper, not the full runtime: ~2 MB, and it installs nothing
+      # when the runtime is already there.
+      - name: Fetch the WebView2 bootstrapper
+        run: |
+          Invoke-WebRequest -Uri https://go.microsoft.com/fwlink/p/?LinkId=2124703 `
+            -OutFile installer/MicrosoftEdgeWebview2Setup.exe
+
+      - name: Build the installer
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" `
+            /DAppVersion=${{ steps.version.outputs.version }} `
+            /DAppNumericVersion=${{ steps.version.outputs.numeric }} `
+            installer/FarmsyncSolver.iss
+          if ($LASTEXITCODE -ne 0) { throw "the installer failed to build" }
+
       - name: Compute the checksums
         run: |
           Get-ChildItem dist -File |
@@ -82,4 +102,5 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             dist/FarmsyncSolver-${{ steps.version.outputs.version }}-win64.zip
+            dist/FarmsyncSolver-Setup-${{ steps.version.outputs.version }}.exe
             dist/SHA256SUMS.txt

@@ -10,7 +10,7 @@ import multiprocessing
 import sys
 from pathlib import Path
 
-from farmsync_solver import logging_setup
+from farmsync_solver import logging_setup, single_instance
 from farmsync_solver._version import APP_NAME, VERSION
 from farmsync_solver.errors import AppError
 
@@ -24,6 +24,12 @@ def run(argv: list[str], log_dir: Path | None = None) -> int:
     logging_setup.configure(log_dir=log_dir)
     selftest = SELFTEST_FLAG in argv
     _log.info("start app=%s version=%s selftest=%s", APP_NAME, VERSION, selftest)
+
+    # Before the window. --selftest opens no window and spends nothing, so it
+    # takes no mutex and never trips over a copy that is already running.
+    if not selftest and not single_instance.claim():
+        _log.warning("second launch refused: the app is already running")
+        return 0
 
     try:
         # Imported here, not at module top: the UI pulls in NiceGUI, and an

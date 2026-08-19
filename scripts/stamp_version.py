@@ -8,7 +8,9 @@ The tag is the single source of version truth. `farmsync_solver/_version.py` is
 committed holding the `0.0.0-dev` placeholder and is overwritten here at build
 time, so "tagged 1.0.1, file still says 1.0.0" cannot happen.
 
-It prints `version=` and `prerelease=` lines for the release workflow to read.
+It prints `version=`, `numeric=` and `prerelease=` lines for the release workflow
+to read. `numeric=` is the three-number part alone, which is all the installer's
+`VersionInfoVersion` accepts.
 """
 from __future__ import annotations
 
@@ -38,9 +40,14 @@ def is_prerelease(version: str) -> bool:
     return "-" in version
 
 
+def numeric_version(version: str) -> str:
+    """`1.2.0-rc1` -> `1.2.0`. Inno Setup's VersionInfoVersion takes numbers only."""
+    return version.split("-", 1)[0]
+
+
 def file_version_tuple(version: str) -> tuple[int, int, int, int]:
     """The four numbers Windows file properties hold. The pre-release part is lost."""
-    numbers = version.split("-", 1)[0].split(".")
+    numbers = numeric_version(version).split(".")
     major, minor, patch = (int(number) for number in numbers)
     return (major, minor, patch, 0)
 
@@ -113,6 +120,7 @@ def main(argv: list[str]) -> int:
         path.write_text(source, encoding="utf-8")
 
     print(f"version={version}")
+    print(f"numeric={numeric_version(version)}")
     print(f"prerelease={'true' if is_prerelease(version) else 'false'}")
     return 0
 
