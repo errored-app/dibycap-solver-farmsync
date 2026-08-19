@@ -1,0 +1,25 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "D — Handheld LCD", "x": 0, "y": 0, "w": 900, "h": 640 },
+    { "file": "Color.dc.html", "title": "E — Color handheld", "x": 980, "y": 0, "w": 900, "h": 640 },
+    { "file": "Modern.dc.html", "title": "F — Modern", "x": 1960, "y": 0, "w": 900, "h": 640 },
+    { "file": "Console.dc.html", "title": "G — Console shell (own layout)", "x": 0, "y": 900, "w": 900, "h": 640 },
+    { "file": "Adventure.dc.html", "title": "H — Adventure (own layout)", "x": 980, "y": 900, "w": 900, "h": 640 },
+    { "file": "ConsoleToken.dc.html", "title": "G2 — Console, cheap theme", "x": 0, "y": 1800, "w": 900, "h": 640 },
+    { "file": "AdventureToken.dc.html", "title": "H2 — Adventure, cheap theme", "x": 980, "y": 1800, "w": 900, "h": 640 },
+    { "file": "Settings.dc.html", "title": "Settings — theme picker", "x": 1960, "y": 1800, "w": 900, "h": 900 }
+  ],
+  "annotations": [
+    { "id": "brief", "x": 0, "y": -200, "w": 560, "text": "FarmsyncSolver — monster-RPG directions\nSame moment everywhere: a run mid-round, 87 of 132 done. Real app wording throughout.\nOriginal art in the spirit of 90s handhelds and today's monster games — no Pokemon logos, balls or characters.\nTop row: the five shipping themes' Home screens. Middle row: the two full skins, kept for reference. Bottom row: the cheap-theme versions plus the Settings picker." },
+    { "id": "note-d", "x": 0, "y": 680, "w": 430, "text": "D — Handheld LCD  (ships as \"Handheld\")\nFour-shade green LCD, chunky double-line dialogue boxes, a cursor arrow that marks the row in play.\nTradeoff: one hue only, so status colour has to be carried by shape and fill. Long sessions on green tire the eyes." },
+    { "id": "note-e", "x": 980, "y": 680, "w": 430, "text": "E — Color handheld  (ships as \"Handheld Color\")\nWarm paper, navy rounded dialogue boxes, red and gold accents, an HP-style run bar. Keeps the toy feel but stays readable all day.\nTradeoff: less nostalgic than D, and more colours to keep in line as the app grows." },
+    { "id": "note-f", "x": 1960, "y": 680, "w": 430, "text": "F — Modern  (ships as \"Modern\", the default)\nToday's app language — soft white cards, rounded pills, a live status chip in the title bar. This is the one layout every theme shares.\nTradeoff: the quietest of the set. Read on its own it is a clean tool, not a game." },
+    { "id": "note-g", "x": 0, "y": 1580, "w": 430, "text": "G — Console shell, own layout  (NOT shipping)\nThe window IS a 90s console: moulded plastic, sunken screens, and a hardware bar where Settings and Details become RESET and EJECT.\nKept for reference only. Its frame eats about 90px of height and every other screen would have to be rebuilt for it." },
+    { "id": "note-h", "x": 980, "y": 1580, "w": 430, "text": "H — Adventure, own layout  (NOT shipping)\nOutdoor scene behind navy-and-gold bubble panels, a big gold button, element badges, cream stat sheet.\nKept for reference only. The background fights the data, and every new screen would need the same care or it falls apart." },
+    { "id": "note-g2", "x": 0, "y": 2480, "w": 430, "text": "G2 — Console, cheap theme  (ships as \"Console\")\nExactly F's layout and markup. Only the tokens changed: grey plastic title and status bars, sunken dark cards, purple keys, square corners, mono type.\nGave up the hardware bar, the POWER lamp, RESET and EJECT." },
+    { "id": "note-h2", "x": 980, "y": 2480, "w": 430, "text": "H2 — Adventure, cheap theme  (ships as \"Adventure\")\nExactly F's layout and markup. Only the tokens changed: sky background, navy cards with a gold edge, gold button, cream stat card, round type.\nGave up the outdoor scene, the element badges, the oversized button." },
+    { "id": "note-settings", "x": 1960, "y": 2740, "w": 430, "text": "Settings — theme picker\nA new Theme section, between Speed and Updates. Five tiles, each a small picture of its own Home screen, one selected. Modern is the default.\nEverything else on the screen is the app's real wording, in the order the code already draws it. The screen is taller than the 900x640 window, so it scrolls — Settings already does.\nOpen question for you: should picking a theme be allowed during a run? Keys and Speed are locked mid-run; a theme changes nothing that is running, so I left it unlocked." },
+    { "id": "note-next", "x": 2940, "y": 1800, "w": 360, "text": "Five themes ship: Handheld, Handheld Color, Modern, Console, Adventure. One layout, five sets of values.\nNext, on your word: build it — pull the colours out of home.py into CSS variables, add `theme` to the config, wire the picker." }
+  ],
+  "launch": { "view": "canvas" }
+}

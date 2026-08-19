@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; }
+    a { color: #000080; } a:hover { color: #1084d0; }
+    .bevel-out { border-top: 2px solid #ffffff; border-left: 2px solid #ffffff; border-right: 2px solid #6b6b63; border-bottom: 2px solid #6b6b63; }
+    .bevel-in { border-top: 2px solid #6b6b63; border-left: 2px solid #6b6b63; border-right: 2px solid #ffffff; border-bottom: 2px solid #ffffff; }
+  </style>
+</helmet>
+<div style="width: 900px; height: 640px; overflow: hidden; background: #d4d0c8; font-family: Tahoma, Verdana, Geneva, sans-serif; font-size: 11px; color: #1a1a1a; display: flex; flex-direction: column;">
+
+  <div style="display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 3px 0 5px; background: linear-gradient(90deg, #000080 0%, #1084d0 100%); color: #ffffff;">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#ffffff" stroke-width="1.6"><rect x="2" y="3" width="12" height="10"></rect><path d="M2 6h12M5 9h6"></path></svg>
+    <div style="flex-grow: 1; font-weight: bold; font-size: 12px; letter-spacing: 0.2px;">FarmsyncSolver</div>
+    <div style="display: flex; gap: 2px;">
+      <div class="bevel-out" style="width: 18px; height: 16px; background: #d4d0c8; display: flex; align-items: center; justify-content: center;"><svg width="8" height="8" viewBox="0 0 8 8" stroke="#1a1a1a" stroke-width="1.4"><path d="M1 6h6"></path></svg></div>
+      <div class="bevel-out" style="width: 18px; height: 16px; background: #d4d0c8; display: flex; align-items: center; justify-content: center;"><svg width="8" height="8" viewBox="0 0 8 8" stroke="#1a1a1a" stroke-width="1.2" fill="none"><rect x="1" y="1" width="6" height="6"></rect></svg></div>
+      <div class="bevel-out" style="width: 18px; height: 16px; background: #d4d0c8; display: flex; align-items: center; justify-content: center;"><svg width="8" height="8" viewBox="0 0 8 8" stroke="#1a1a1a" stroke-width="1.4"><path d="M1 1l6 6M7 1l-6 6"></path></svg></div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: #ecebe4; border-bottom: 1px solid #9a978d;">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#7a5c00" stroke-width="1.6"><path d="M8 2v8M4.5 6.5L8 10l3.5-3.5M3 13h10"></path></svg>
+    <div style="flex-grow: 1; font-weight: bold;">Version 1.4.2 is ready.</div>
+    <div class="bevel-out" style="background: #d4d0c8; padding: 4px 12px; font-weight: bold;">Update now</div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; gap: 12px; padding: 12px; min-height: 0;">
+
+    <div style="width: 292px; display: flex; flex-direction: column; gap: 10px;">
+      <div class="bevel-in" style="background: #ffffff; padding: 10px 12px;">
+        <div style="font-size: 10px; color: #5a5a52; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 3px;">Credit</div>
+        <div style="font-size: 17px; font-weight: bold;">5,662 captchas left</div>
+        <div style="font-size: 12px; color: #3a3a34;">$8.49 remaining</div>
+      </div>
+
+      <div class="bevel-out" style="background: #d4d0c8; height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="#1a1a1a"><rect x="3" y="3" width="4" height="10"></rect><rect x="9" y="3" width="4" height="10"></rect></svg>
+        <span style="font-size: 15px; font-weight: bold;">Stop</span>
+      </div>
+
+      <div class="bevel-in" style="background: #ecebe4; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px;">
+        <div style="font-size: 13px; font-weight: bold;">Checking accounts&#8230;</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #3a3a34;">
+          <span>87 of 132</span><span>Round 4</span>
+        </div>
+        <div class="bevel-in" style="background: #ffffff; height: 16px; padding: 2px;">
+          <div style="width: 66%; height: 100%; background: repeating-linear-gradient(90deg, #000080 0 8px, #d4d0c8 8px 10px);"></div>
+        </div>
+      </div>
+
+      <div class="bevel-in" style="background: #ffffff; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; justify-content: space-between;"><span style="color: #3a3a34;">Round</span><span style="font-weight: bold;">4</span></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color: #3a3a34;">Joined</span><span style="font-weight: bold;">1,204</span></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color: #3a3a34;">Captchas solved</span><span style="font-weight: bold;">861</span></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color: #3a3a34;">Could not check</span><span style="font-weight: bold; color: #9a5b00;">343</span></div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 6px; color: #3a3a34;">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="#3a3a34"><path d="M2 1l5 4-5 4z"></path></svg>
+        <span style="text-decoration: underline;">Details</span>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+      <div style="display: flex; align-items: center; gap: 7px;">
+        <div class="bevel-in" style="width: 13px; height: 13px; background: #ffffff;"></div>
+        <span>Show only the ones that failed.</span>
+      </div>
+
+      <div class="bevel-in" style="flex-grow: 1; background: #ffffff; display: flex; flex-direction: column; min-height: 0;">
+        <div style="display: grid; grid-template-columns: 120px 1fr 150px 56px; background: #d4d0c8; border-bottom: 1px solid #9a978d;">
+          <div class="bevel-out" style="padding: 4px 8px; font-weight: bold;">Status</div>
+          <div class="bevel-out" style="padding: 4px 8px; font-weight: bold;">Account</div>
+          <div class="bevel-out" style="padding: 4px 8px; font-weight: bold;">Detail</div>
+          <div class="bevel-out" style="padding: 4px 8px; font-weight: bold; text-align: right;">Elapsed</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 120px 1fr 150px 56px; align-items: center; padding: 3px 0; border-bottom: 1px solid #e3e1da;">
+          <div style="padding: 0 8px;"><span style="display: inline-block; padding: 1px 6px; border: 1px solid #006400; color: #006400; background: #eaf5ea;">Captcha solved</span></div>
+          <div style="padding: 0 8px;">brightpine_44</div>
+          <div style="padding: 0 8px; color: #3a3a34;">&#8212;</div>
+          <div style="padding: 0 8px; text-align: right; color: #3a3a34;">3s</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 120px 1fr 150px 56px; align-items: center; padding: 3px 0; border-bottom: 1px solid #e3e1da; background: #f4f3ee;">
+          <div style="padding: 0 8px;"><span style="display: inline-block; padding: 1px 6px; border: 1px solid #9a5b00; color: #9a5b00; background: #fbf1e3;">Could not check</span></div>
+          <div style="padding: 0 8px;">quietfox_9</div>
+          <div style="padding: 0 8px; color: #3a3a34;">Blocked account</div>
+          <div style="padding: 0 8px; text-align: right; color: #3a3a34;">7s</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 120px 1fr 150px 56px; align-items: center; padding: 3px 0; border-bottom: 1px solid #e3e1da;">
+          <div style="padding: 0 8px;"><span style="display: inline-block; padding: 1px 6px; border: 1px solid #000080; color: #000080; background: #e8ecf7;">Joined</span></div>
+          <div style="padding: 0 8px;">mossriver_12</div>
+          <div style="padding: 0 8px; color: #3a3a34;">&#8212;</div>
+          <div style="padding: 0 8px; text-align: right; color: #3a3a34;">12s</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 120px 1fr 150px 56px; align-items: center; padding: 3px 0;">
+          <div style="padding: 0 8px;"><span style="display: inline-block; padding: 1px 6px; border: 1px solid #006400; color: #006400; background: #eaf5ea;">Captcha solved</span></div>
+          <div style="padding: 0 8px;">slatehill_71</div>
+          <div style="padding: 0 8px; color: #3a3a34;">&#8212;</div>
+          <div style="padding: 0 8px; text-align: right; color: #3a3a34;">18s</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bevel-in" style="display: flex; align-items: center; gap: 10px; margin: 0 12px 10px; padding: 3px 8px; background: #d4d0c8; color: #3a3a34;">
+    <span style="flex-grow: 1;">Run in progress &#8212; round 4</span>
+    <span>Settings</span>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":900,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

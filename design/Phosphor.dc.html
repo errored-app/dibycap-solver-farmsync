@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #ffb000; } a:hover { color: #ffd27a; }
+  </style>
+</helmet>
+<div style="position: relative; width: 900px; height: 640px; overflow: hidden; background: #0a0906; font-family: 'VT323', 'Cascadia Mono', Consolas, monospace; font-size: 20px; line-height: 1.25; color: #ffb000;">
+
+  <div style="position: absolute; inset: 0; pointer-events: none; z-index: 3; background: repeating-linear-gradient(180deg, rgba(0,0,0,0.34) 0 1px, rgba(0,0,0,0) 1px 3px);"></div>
+  <div style="position: absolute; inset: 0; pointer-events: none; z-index: 2; background: radial-gradient(120% 90% at 50% 45%, rgba(255,176,0,0.09) 0%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.55) 100%);"></div>
+
+  <div style="position: relative; z-index: 1; height: 640px; display: flex; flex-direction: column; padding: 16px 20px; box-sizing: border-box;">
+
+    <div style="display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid #6b4b00; padding-bottom: 6px;">
+      <span style="color: #ffd27a; letter-spacing: 1px;">FARMSYNC SOLVER</span>
+      <span style="color: #8a6100;">v1.4.2</span>
+      <span style="flex-grow: 1;"></span>
+      <span style="color: #8a6100;">F2 SETTINGS</span>
+      <span style="color: #8a6100;">ESC QUIT</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #6b4b00; padding: 6px 0; color: #ffd27a;">
+      <span>&gt;&gt; VERSION 1.4.2 IS READY.</span>
+      <span style="flex-grow: 1;"></span>
+      <span style="border: 1px solid #ffb000; padding: 0 10px;">UPDATE NOW</span>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; gap: 22px; padding-top: 12px; min-height: 0;">
+
+      <div style="width: 300px; display: flex; flex-direction: column; gap: 14px;">
+        <div>
+          <div style="color: #8a6100; letter-spacing: 1px;">CREDIT</div>
+          <div style="font-size: 34px; line-height: 1.05; color: #ffd27a;">5,662</div>
+          <div>CAPTCHAS LEFT &#183; $8.49</div>
+        </div>
+
+        <div style="border: 1px solid #ffb000; padding: 10px 14px; display: flex; align-items: center; justify-content: center; gap: 10px; background: rgba(255,176,0,0.08);">
+          <span style="font-size: 26px; letter-spacing: 2px; color: #ffd27a;">[ STOP ]</span>
+        </div>
+
+        <div>
+          <div style="color: #ffd27a;">CHECKING ACCOUNTS&#8230;</div>
+          <div style="letter-spacing: 1px;">[&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;]</div>
+          <div style="color: #8a6100;">87 OF 132 &#183; ROUND 4</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex;"><span>ROUND</span><span style="flex-grow: 1; color: #6b4b00; overflow: hidden; white-space: nowrap;">&#160;.......................................</span><span style="color: #ffd27a;">4</span></div>
+          <div style="display: flex;"><span>JOINED</span><span style="flex-grow: 1; color: #6b4b00; overflow: hidden; white-space: nowrap;">&#160;.......................................</span><span style="color: #ffd27a;">1,204</span></div>
+          <div style="display: flex;"><span>CAPTCHAS SOLVED</span><span style="flex-grow: 1; color: #6b4b00; overflow: hidden; white-space: nowrap;">&#160;.......................................</span><span style="color: #ffd27a;">861</span></div>
+          <div style="display: flex;"><span>COULD NOT CHECK</span><span style="flex-grow: 1; color: #6b4b00; overflow: hidden; white-space: nowrap;">&#160;.......................................</span><span style="color: #ff7b00;">343</span></div>
+        </div>
+
+        <div style="color: #8a6100;">&#9658; DETAILS</div>
+      </div>
+
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+        <div style="display: flex; align-items: center; gap: 8px; color: #8a6100;">
+          <span style="border: 1px solid #6b4b00; width: 16px; height: 16px; display: inline-block;"></span>
+          <span>SHOW ONLY THE ONES THAT FAILED.</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 150px 1fr 160px 60px; color: #8a6100; border-bottom: 1px solid #6b4b00; padding-bottom: 2px;">
+          <div>STATUS</div><div>ACCOUNT</div><div>DETAIL</div><div style="text-align: right;">ELAPSED</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 150px 1fr 160px 60px; padding: 3px 0;">
+          <div style="color: #b6ff5a;">&#9679; SOLVED</div><div style="color: #ffd27a;">brightpine_44</div><div style="color: #8a6100;">&#8212;</div><div style="text-align: right; color: #8a6100;">3s</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px 1fr 160px 60px; padding: 3px 0; background: rgba(255,176,0,0.07);">
+          <div style="color: #ff7b00;">&#9679; NO CHECK</div><div style="color: #ffd27a;">quietfox_9</div><div style="color: #8a6100;">BLOCKED ACCOUNT</div><div style="text-align: right; color: #8a6100;">7s</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px 1fr 160px 60px; padding: 3px 0;">
+          <div>&#9679; JOINED</div><div style="color: #ffd27a;">mossriver_12</div><div style="color: #8a6100;">&#8212;</div><div style="text-align: right; color: #8a6100;">12s</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px 1fr 160px 60px; padding: 3px 0;">
+          <div style="color: #b6ff5a;">&#9679; SOLVED</div><div style="color: #ffd27a;">slatehill_71</div><div style="color: #8a6100;">&#8212;</div><div style="text-align: right; color: #8a6100;">18s</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px 1fr 160px 60px; padding: 3px 0;">
+          <div>&#9679; JOINED</div><div style="color: #ffd27a;">emberlane_3</div><div style="color: #8a6100;">&#8212;</div><div style="text-align: right; color: #8a6100;">21s</div>
+        </div>
+        <div style="padding-top: 2px; color: #ffb000;">_</div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid #6b4b00; padding-top: 6px; display: flex; gap: 16px; color: #8a6100;">
+      <span>RUN IN PROGRESS</span><span style="flex-grow: 1;"></span><span>ROUND 4</span><span>REST 12S</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":900,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

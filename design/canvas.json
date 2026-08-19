@@ -1,0 +1,14 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "A — Beveled desktop", "x": 0, "y": 0, "w": 900, "h": 640 },
+    { "file": "Phosphor.dc.html", "title": "B — Amber terminal", "x": 980, "y": 0, "w": 900, "h": 640 },
+    { "file": "Paper.dc.html", "title": "C — Inked paper", "x": 1960, "y": 0, "w": 900, "h": 640 }
+  ],
+  "annotations": [
+    { "id": "brief", "x": 0, "y": -190, "w": 520, "text": "FarmsyncSolver — retro directions\nSame moment in all three: a run mid-round, 87 of 132 done.\nReal app wording throughout. Pick one and I build Settings, Setup, the close question, and the NiceGUI theme to match." },
+    { "id": "note-a", "x": 0, "y": 680, "w": 420, "text": "A — Beveled desktop\nGrey face, raised buttons, sunken panels. Reads as a serious little Windows tool.\nTradeoff: the most familiar, so the least memorable. Cheapest to build in NiceGUI." },
+    { "id": "note-b", "x": 980, "y": 680, "w": 420, "text": "B — Amber terminal\nCRT phosphor, scanlines, one monospace face. Fits an app that watches a machine work.\nTradeoff: long sessions on amber tire the eyes, and dense data gets cramped." },
+    { "id": "note-c", "x": 1960, "y": 680, "w": 420, "text": "C — Inked paper\n1-bit ink on warm paper, hard shadows, pixel labels. The boldest of the three.\nTradeoff: heavy borders eat space in a 900x640 window, and the table gets tight." }
+  ],
+  "launch": { "view": "canvas" }
+}

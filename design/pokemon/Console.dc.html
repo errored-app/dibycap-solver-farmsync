@@ -1,0 +1,171 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Silkscreen:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #9b7ede; } a:hover { color: #b9a2ec; }
+    .tray { background: linear-gradient(180deg, #e6e4dc 0%, #cbc8bf 100%); border-radius: 8px; box-shadow: inset 0 1px 0 #fffdf6, inset 0 -2px 0 #a8a59c, 0 1px 2px rgba(0,0,0,0.35); }
+    .screen { background: #1b1b1f; border-radius: 6px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.8), 0 1px 0 #fffdf6; }
+    .key { background: linear-gradient(180deg, #8f6bd8 0%, #6a45b0 100%); border-radius: 6px; box-shadow: inset 0 1px 0 #b99cec, 0 3px 0 #4b2f80; color: #f3eeff; }
+    .pix { font-family: 'Silkscreen', 'Space Mono', monospace; }
+  </style>
+</helmet>
+<div style="width: 900px; height: 640px; overflow: hidden; background: #121214; font-family: 'Space Mono', 'Courier New', monospace; font-size: 13px; color: #e8e6df; display: flex; flex-direction: column; padding: 8px; box-sizing: border-box;">
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; background: linear-gradient(180deg, #dddbd3 0%, #c4c1b8 100%); border-radius: 8px; border: 1px solid #8e8b83; min-height: 0;">
+
+    <div style="display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 0 0 14px; border-bottom: 1px solid #a8a59c;">
+      <svg width="22" height="18" viewBox="0 0 22 18" fill="none"><rect x="1" y="1" width="20" height="16" rx="2" fill="#3a3a3f" stroke="#1b1b1f"></rect><rect x="5" y="4" width="12" height="7" fill="#d8d5cc"></rect><path d="M7 14h8" stroke="#d8d5cc" stroke-width="2"></path></svg>
+      <div style="flex-grow: 1; font-weight: 700; font-size: 16px; color: #26262a; letter-spacing: -0.3px;">FarmsyncSolver</div>
+      <div style="display: flex; flex-direction: column; gap: 3px; width: 180px;">
+        <div style="height: 2px; background: #a8a59c;"></div>
+        <div style="height: 2px; background: #a8a59c;"></div>
+        <div style="height: 2px; background: #a8a59c;"></div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 2px; height: 42px; padding: 0 8px; background: linear-gradient(180deg, #4a4a50 0%, #303035 100%);">
+        <div style="width: 34px; height: 26px; display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 12 12" stroke="#e8e6df" stroke-width="1.6"><path d="M2 6h8"></path></svg></div>
+        <div style="width: 34px; height: 26px; display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 12 12" stroke="#e8e6df" stroke-width="1.4" fill="none"><rect x="2" y="2" width="8" height="8"></rect></svg></div>
+        <div style="width: 34px; height: 26px; display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 12 12" stroke="#e8e6df" stroke-width="1.6"><path d="M2 2l8 8M10 2l-8 8"></path></svg></div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid #a8a59c;">
+      <div style="width: 8px; height: 8px; border-radius: 999px; background: #d8a12a; box-shadow: 0 0 6px #d8a12a;"></div>
+      <div class="pix" style="flex-grow: 1; font-size: 11px; color: #46464c;">VERSION 1.4.2 IS READY.</div>
+      <div class="key pix" style="font-size: 10px; padding: 7px 12px;">UPDATE NOW</div>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; gap: 12px; padding: 12px; min-height: 0;">
+
+      <div style="width: 330px; display: flex; flex-direction: column; gap: 12px;">
+
+        <div class="screen" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 9px; height: 9px; background: #e2434a; box-shadow: 0 0 7px #e2434a;"></div>
+            <div style="font-size: 17px; font-weight: 700; letter-spacing: -0.5px;">5,662 captchas left ($8.49)</div>
+          </div>
+
+          <div class="tray" style="padding: 10px;">
+            <div class="key" style="height: 58px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="#f3eeff"><rect x="3" y="3" width="4" height="10"></rect><rect x="9" y="3" width="4" height="10"></rect></svg>
+              <span class="pix" style="font-size: 18px; letter-spacing: 2px;">STOP</span>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 7px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #a9a7a0;">
+              <span>Checking accounts&#8230;</span><span>87 / 132</span>
+            </div>
+            <div style="height: 14px; background: #101013; border: 1px solid #46464c; padding: 2px; display: flex; gap: 2px;">
+              <div style="width: 66%; background: repeating-linear-gradient(90deg, #8f6bd8 0 6px, #101013 6px 8px);"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tray" style="padding: 10px; flex-grow: 1; display: flex;">
+          <div class="screen" style="flex-grow: 1; padding: 4px 14px; display: flex; flex-direction: column; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #2e2e33;">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#8f6bd8" stroke-width="2"><rect x="3" y="3" width="10" height="10"></rect></svg>
+              <span style="flex-grow: 1; color: #c9c7c0;">Round</span><span style="font-weight: 700;">4</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #2e2e33;">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="#8f6bd8"><rect x="2" y="6" width="5" height="5"></rect><rect x="9" y="6" width="5" height="5"></rect></svg>
+              <span style="flex-grow: 1; color: #c9c7c0;">Joined</span><span style="font-weight: 700;">1,204</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #2e2e33;">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#8f6bd8" stroke-width="2"><path d="M3 8l4 4 6-8"></path></svg>
+              <span style="flex-grow: 1; color: #c9c7c0;">Captchas solved</span><span style="font-weight: 700;">861</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0;">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#8f6bd8" stroke-width="2"><path d="M6 6a2 2 0 113 1.7V9"></path><path d="M8 12h0.01"></path></svg>
+              <span style="flex-grow: 1; color: #c9c7c0;">Could not check</span><span style="font-weight: 700; color: #e2434a;">343</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+
+        <div class="screen" style="padding: 12px 14px; display: flex; align-items: center; gap: 12px;">
+          <div style="width: 46px; height: 24px; border-radius: 999px; background: #3a3a3f; padding: 3px; display: flex; box-shadow: inset 0 2px 4px rgba(0,0,0,0.7);">
+            <div style="width: 18px; height: 18px; border-radius: 999px; background: linear-gradient(180deg, #f2f0e9, #c9c7c0);"></div>
+          </div>
+          <span style="color: #c9c7c0;">Show only the ones that failed.</span>
+        </div>
+
+        <div class="screen" style="flex-grow: 1; display: flex; flex-direction: column; min-height: 0;">
+          <div class="pix" style="display: grid; grid-template-columns: 140px 1fr 132px 54px; gap: 10px; padding: 12px 14px; font-size: 10px; color: #a9a7a0; border-bottom: 1px solid #2e2e33;">
+            <div>STATUS</div><div>ACCOUNT</div><div>DETAIL</div><div style="text-align: right;">ELAPSED</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 140px 1fr 132px 54px; gap: 10px; padding: 11px 14px; align-items: center; border-bottom: 1px solid #2e2e33; background: #202024;">
+            <div><span style="display: inline-block; padding: 2px 8px; border: 1px solid #4fae5a; color: #79d488;">Solved</span></div>
+            <div>brightpine_44</div><div style="color: #8b8983;">&#8212;</div><div style="text-align: right; color: #8b8983;">3s</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 140px 1fr 132px 54px; gap: 10px; padding: 11px 14px; align-items: center; border-bottom: 1px solid #2e2e33;">
+            <div><span style="display: inline-block; padding: 2px 8px; border: 1px solid #d8a12a; color: #edc063;">Could not check</span></div>
+            <div>quietfox_9</div><div style="color: #8b8983;">Blocked account</div><div style="text-align: right; color: #8b8983;">7s</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 140px 1fr 132px 54px; gap: 10px; padding: 11px 14px; align-items: center; border-bottom: 1px solid #2e2e33;">
+            <div><span style="display: inline-block; padding: 2px 8px; border: 1px solid #8f6bd8; color: #b99cec;">Joined</span></div>
+            <div>mossriver_12</div><div style="color: #8b8983;">&#8212;</div><div style="text-align: right; color: #8b8983;">12s</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 140px 1fr 132px 54px; gap: 10px; padding: 11px 14px; align-items: center;">
+            <div><span style="display: inline-block; padding: 2px 8px; border: 1px solid #4fae5a; color: #79d488;">Solved</span></div>
+            <div>slatehill_71</div><div style="color: #8b8983;">&#8212;</div><div style="text-align: right; color: #8b8983;">18s</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 16px; height: 86px; padding: 0 16px; border-top: 1px solid #a8a59c; background: linear-gradient(180deg, #d5d2ca 0%, #b9b6ad 100%); border-radius: 0 0 7px 7px;">
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+        <div style="width: 12px; height: 12px; border-radius: 999px; background: #e2434a; box-shadow: 0 0 8px #e2434a, inset 0 -2px 2px #8f1f24;"></div>
+        <div class="pix" style="font-size: 9px; color: #46464c;">POWER</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <div class="key pix" style="width: 92px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 10px;">RESET</div>
+        <div class="pix" style="font-size: 9px; color: #46464c;">SETTINGS</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <div class="key pix" style="width: 92px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 10px;">EJECT</div>
+        <div class="pix" style="font-size: 9px; color: #46464c;">DETAILS</div>
+      </div>
+
+      <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 20px;">
+        <svg width="26" height="12" viewBox="0 0 26 12" fill="#8e8b83"><path d="M1 1h24l-12 10z"></path></svg>
+        <div style="width: 100%; height: 10px; border-radius: 3px; background: linear-gradient(180deg, #9d9a92, #cbc8bf); box-shadow: inset 0 2px 3px rgba(0,0,0,0.4);"></div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px; height: 100%; padding: 0 14px; background: #1b1b1f;">
+        <div style="display: flex; gap: 4px;">
+          <div style="width: 3px; height: 46px; background: #303035;"></div>
+          <div style="width: 3px; height: 46px; background: #303035;"></div>
+          <div style="width: 3px; height: 46px; background: #303035;"></div>
+          <div style="width: 3px; height: 46px; background: #303035;"></div>
+          <div style="width: 3px; height: 46px; background: #303035;"></div>
+        </div>
+        <div class="pix" style="font-size: 13px; color: #e2434a; text-shadow: 0 0 8px rgba(226,67,74,0.7);">FS-1</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":900,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

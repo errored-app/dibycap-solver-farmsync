@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #ffd45c; } a:hover { color: #ffe9a3; }
+    .bubble { background: linear-gradient(180deg, #1b3f86 0%, #10265c 100%); border: 3px solid #f2c14e; border-radius: 18px; box-shadow: inset 0 2px 0 rgba(255,255,255,0.18), 0 4px 0 rgba(8,20,50,0.55); }
+    .cream { background: linear-gradient(180deg, #fdf6e3 0%, #f3e6c8 100%); border: 3px solid #f2c14e; border-radius: 18px; box-shadow: 0 4px 0 rgba(8,20,50,0.35); }
+    .out { text-shadow: 0 2px 0 rgba(8,20,50,0.55); }
+  </style>
+</helmet>
+<div style="position: relative; width: 900px; height: 640px; overflow: hidden; background: linear-gradient(180deg, #4aa8e8 0%, #8ed3f5 55%, #cbeaf8 100%); font-family: 'Fredoka', system-ui, sans-serif; font-size: 14px; color: #ffffff;">
+
+  <div style="position: absolute; left: 80px; top: 86px; width: 150px; height: 42px; border-radius: 999px; background: rgba(255,255,255,0.75);"></div>
+  <div style="position: absolute; left: 140px; top: 66px; width: 90px; height: 44px; border-radius: 999px; background: rgba(255,255,255,0.75);"></div>
+  <div style="position: absolute; left: 620px; top: 120px; width: 190px; height: 40px; border-radius: 999px; background: rgba(255,255,255,0.6);"></div>
+
+  <div style="position: absolute; left: -60px; top: 300px; width: 460px; height: 300px; border-radius: 50%; background: #4f9a5c;"></div>
+  <div style="position: absolute; left: 520px; top: 280px; width: 520px; height: 320px; border-radius: 50%; background: #59a866;"></div>
+  <div style="position: absolute; left: 0; bottom: 0; width: 900px; height: 176px; background: linear-gradient(180deg, #74bd63 0%, #4f9a4c 100%); border-top: 4px solid #3d7f3d;"></div>
+  <div style="position: absolute; left: 330px; bottom: 0; width: 240px; height: 176px; background: #d9c58b; border-radius: 120px 120px 0 0;"></div>
+
+  <div style="position: relative; width: 900px; height: 640px; display: flex; flex-direction: column;">
+
+    <div style="display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 14px; background: #0b1c46; border-bottom: 3px solid #f2c14e;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2l8.5 5v10L12 22 3.5 17V7z" fill="#f2c14e" stroke="#0b1c46" stroke-width="1.5"></path><path d="M12 8l3 2.5v4L12 17l-3-2.5v-4z" fill="#0b1c46"></path></svg>
+      <div class="out" style="flex-grow: 1; font-size: 19px; font-weight: 600;">FarmsyncSolver</div>
+      <div style="display: flex; gap: 8px;">
+        <div style="width: 26px; height: 26px; border-radius: 999px; border: 2px solid #f2c14e; display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 12 12" stroke="#f2c14e" stroke-width="2" stroke-linecap="round"><path d="M3 6h6"></path></svg></div>
+        <div style="width: 26px; height: 26px; border-radius: 999px; border: 2px solid #f2c14e; display: flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 12 12" stroke="#f2c14e" stroke-width="2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"></path></svg></div>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; gap: 16px; padding: 16px; min-height: 0;">
+
+      <div style="width: 396px; display: flex; flex-direction: column; gap: 14px;">
+
+        <div style="display: flex; gap: 12px; padding-left: 4px;">
+          <svg width="52" height="58" viewBox="0 0 52 58" fill="none"><path d="M26 2l21 12v30L26 56 5 44V14z" fill="#2f8fd8" stroke="#f2c14e" stroke-width="3"></path><path d="M26 18c4 6 7 9 7 13a7 7 0 01-14 0c0-4 3-7 7-13z" fill="#eaf6ff"></path></svg>
+          <svg width="52" height="58" viewBox="0 0 52 58" fill="none"><path d="M26 2l21 12v30L26 56 5 44V14z" fill="#d8452f" stroke="#f2c14e" stroke-width="3"></path><path d="M26 17c1 6 8 7 8 15a8 8 0 01-16 0c0-5 5-6 8-15z" fill="#ffe2c9"></path></svg>
+          <svg width="52" height="58" viewBox="0 0 52 58" fill="none"><path d="M26 2l21 12v30L26 56 5 44V14z" fill="#e8b52a" stroke="#f2c14e" stroke-width="3"></path><path d="M29 15l-11 16h7l-2 12 11-16h-7z" fill="#4a2f05"></path></svg>
+        </div>
+
+        <div class="bubble" style="padding: 14px 20px;">
+          <div class="out" style="font-size: 15px; color: #cfe0ff;">Credit</div>
+          <div class="out" style="font-size: 30px; font-weight: 700; letter-spacing: -0.5px; margin-top: 2px;">
+            <span style="color: #ffd45c;">5,662</span> captchas left
+          </div>
+          <div class="out" style="font-size: 16px; color: #cfe0ff;">$8.49 remaining</div>
+        </div>
+
+        <div style="height: 74px; border-radius: 20px; border: 3px solid #0b1c46; background: linear-gradient(180deg, #ffd85f 0%, #f0a92b 100%); box-shadow: inset 0 3px 0 rgba(255,255,255,0.6), 0 5px 0 #b97a13; display: flex; align-items: center; justify-content: center; gap: 14px;">
+          <div style="width: 44px; height: 44px; border-radius: 999px; border: 3px solid #0b1c46; background: #fdf6e3; display: flex; align-items: center; justify-content: center;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="#0b1c46"><rect x="3" y="3" width="4" height="10" rx="1"></rect><rect x="9" y="3" width="4" height="10" rx="1"></rect></svg>
+          </div>
+          <span style="font-size: 30px; font-weight: 700; color: #0b1c46;">Stop</span>
+        </div>
+
+        <div class="bubble" style="padding: 12px 18px; display: flex; flex-direction: column; gap: 9px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <span class="out" style="font-size: 17px; font-weight: 500;">Checking accounts&#8230;</span>
+            <span class="out" style="font-size: 15px; color: #ffd45c;">Round 4</span>
+          </div>
+          <div style="height: 16px; border-radius: 999px; background: #081436; border: 2px solid #0b1c46; padding: 2px; display: flex;">
+            <div style="width: 66%; border-radius: 999px; background: linear-gradient(180deg, #86e57a 0%, #3f9c46 100%);"></div>
+          </div>
+          <div class="out" style="font-size: 15px; color: #cfe0ff;">87 of 132 done</div>
+        </div>
+
+        <div class="cream" style="padding: 6px 16px; color: #24304d;">
+          <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 2px dotted #d8c79c;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3l7.5 4.5v9L12 21l-7.5-4.5v-9z" fill="#5fae5f" stroke="#24304d" stroke-width="1.6"></path></svg>
+            <span style="flex-grow: 1; font-size: 16px;">Round</span>
+            <span style="min-width: 74px; text-align: center; padding: 3px 0; border-radius: 8px; background: #10265c; color: #ffffff; font-weight: 600;">4</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 2px dotted #d8c79c;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#4a8fd8" stroke="#24304d" stroke-width="1.4"><circle cx="9" cy="9" r="3.5"></circle><circle cx="16" cy="10" r="3"></circle><path d="M3.5 19c1-3 4-4.5 5.5-4.5S13.5 16 14.5 19z"></path></svg>
+            <span style="flex-grow: 1; font-size: 16px;">Joined</span>
+            <span style="min-width: 74px; text-align: center; padding: 3px 0; border-radius: 8px; background: #10265c; color: #ffffff; font-weight: 600;">1,204</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 2px dotted #d8c79c;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill="#d8452f" stroke="#24304d" stroke-width="1.6"></circle><path d="M8 12.5l2.5 2.5L16 9" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="flex-grow: 1; font-size: 16px;">Captchas solved</span>
+            <span style="min-width: 74px; text-align: center; padding: 3px 0; border-radius: 8px; background: #10265c; color: #ffffff; font-weight: 600;">861</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill="#e8b52a" stroke="#24304d" stroke-width="1.6"></circle><path d="M9.6 9.4a2.5 2.5 0 113.5 2.3v1.4" stroke="#24304d" stroke-width="2" stroke-linecap="round"></path><path d="M13 16.6h0.01" stroke="#24304d" stroke-width="2.4" stroke-linecap="round"></path></svg>
+            <span style="flex-grow: 1; font-size: 16px;">Could not check</span>
+            <span style="min-width: 74px; text-align: center; padding: 3px 0; border-radius: 8px; background: #10265c; color: #ffd45c; font-weight: 600;">343</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+
+        <div class="bubble" style="padding: 10px 16px; display: flex; align-items: center; gap: 12px;">
+          <div style="width: 56px; height: 30px; border-radius: 999px; border: 3px solid #f2c14e; background: #081436; padding: 3px; display: flex;">
+            <div style="width: 22px; height: 22px; border-radius: 999px; background: #fdf6e3;"></div>
+          </div>
+          <span class="out" style="font-size: 16px; font-weight: 500;">Show only the ones that failed.</span>
+        </div>
+
+        <div class="bubble" style="flex-grow: 1; padding: 10px; display: flex; flex-direction: column; gap: 6px; min-height: 0;">
+          <div style="display: grid; grid-template-columns: 1fr 128px 108px 44px; gap: 8px; padding: 8px 12px; border-radius: 12px; background: #081436; font-size: 14px; color: #ffd45c; font-weight: 500;">
+            <div>Account</div><div>Status</div><div>Detail</div><div style="text-align: right;">Time</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 128px 108px 44px; gap: 8px; padding: 9px 12px; align-items: center; border-radius: 12px; background: rgba(255,255,255,0.09); font-size: 15px;">
+            <div>brightpine_44</div>
+            <div><span style="display: inline-block; padding: 2px 10px; border-radius: 999px; background: #3f9c46; font-size: 13px;">Solved</span></div>
+            <div style="color: #a9bde6;">&#8212;</div><div style="text-align: right; color: #a9bde6;">3s</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 128px 108px 44px; gap: 8px; padding: 9px 12px; align-items: center; border-radius: 12px; font-size: 15px;">
+            <div>quietfox_9</div>
+            <div><span style="display: inline-block; padding: 2px 10px; border-radius: 999px; background: #e8b52a; color: #4a2f05; font-size: 13px;">Could not check</span></div>
+            <div style="color: #a9bde6;">Blocked</div><div style="text-align: right; color: #a9bde6;">7s</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 128px 108px 44px; gap: 8px; padding: 9px 12px; align-items: center; border-radius: 12px; background: rgba(255,255,255,0.09); font-size: 15px;">
+            <div>mossriver_12</div>
+            <div><span style="display: inline-block; padding: 2px 10px; border-radius: 999px; background: #2f8fd8; font-size: 13px;">Joined</span></div>
+            <div style="color: #a9bde6;">&#8212;</div><div style="text-align: right; color: #a9bde6;">12s</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 128px 108px 44px; gap: 8px; padding: 9px 12px; align-items: center; border-radius: 12px; font-size: 15px;">
+            <div>slatehill_71</div>
+            <div><span style="display: inline-block; padding: 2px 10px; border-radius: 999px; background: #3f9c46; font-size: 13px;">Solved</span></div>
+            <div style="color: #a9bde6;">&#8212;</div><div style="text-align: right; color: #a9bde6;">18s</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; align-self: flex-end;">
+          <span class="out" style="font-size: 16px; font-weight: 500;">Details</span>
+          <div style="width: 40px; height: 40px; border-radius: 999px; border: 3px solid #f2c14e; background: #10265c; display: flex; align-items: center; justify-content: center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f2c14e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":900,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
