@@ -10,8 +10,6 @@ from farmsync_solver import single_instance
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "installer" / "FarmsyncSolver.iss"
-# The offline WebView2 Runtime installer the Setup.exe carries.
-RUNTIME = "MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
 
 
 @pytest.fixture(scope="module")
@@ -57,19 +55,14 @@ def test_it_packs_the_whole_built_folder(script: str) -> None:
     assert "createallsubdirs" in script
 
 
-def test_the_offline_webview2_runtime_is_bundled(script: str) -> None:
-    """The full runtime, not the bootstrapper: a first install must not need the network."""
-    (source_line,) = [
-        line for line in script.splitlines() if line.startswith("Source:") and "MicrosoftEdgeWebView2" in line
-    ]
-
-    assert f'Source: "{RUNTIME}"' in source_line
-    # Already-compressed bytes: packing them again only slows the build.
-    assert "nocompression" in source_line
+def test_the_webview2_bootstrapper_is_bundled(script: str) -> None:
+    assert 'Source: "MicrosoftEdgeWebview2Setup.exe"' in script
 
 
 def test_the_webview2_runtime_is_installed_only_when_missing(script: str) -> None:
-    (run_line,) = [line for line in script.splitlines() if RUNTIME in line and "Filename:" in line]
+    (run_line,) = [
+        line for line in script.splitlines() if "MicrosoftEdgeWebview2Setup.exe" in line and "Filename:" in line
+    ]
 
     assert "Check: not WebView2Installed" in script
     assert "/silent /install" in run_line

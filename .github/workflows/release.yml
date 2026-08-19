@@ -76,20 +76,18 @@ jobs:
           if (-not (Test-Path $iscc)) { throw "this runner has no Inno Setup at $iscc" }
           "iscc=$iscc" >> $env:GITHUB_OUTPUT
 
-      # The full offline runtime, not the 2 MB bootstrapper: a first install then
-      # never waits on a ~200 MB download, and never hangs when that download is
-      # slow or blocked. It installs nothing when the runtime is already there.
-      # These bytes end up inside the Setup.exe users run, so their Microsoft
-      # signature is checked first.
-      - name: Fetch the WebView2 runtime
+      # The bootstrapper, not the full runtime: ~2 MB, and it installs nothing
+      # when the runtime is already there. These bytes end up inside the
+      # Setup.exe users run, so their Microsoft signature is checked first.
+      - name: Fetch the WebView2 bootstrapper
         run: |
-          $file = "installer/MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
-          Invoke-WebRequest -Uri https://go.microsoft.com/fwlink/p/?LinkId=2124701 -OutFile $file
+          $file = "installer/MicrosoftEdgeWebview2Setup.exe"
+          Invoke-WebRequest -Uri https://go.microsoft.com/fwlink/p/?LinkId=2124703 -OutFile $file
           $signature = Get-AuthenticodeSignature $file
           "status=$($signature.Status) subject=$($signature.SignerCertificate.Subject)"
-          if ($signature.Status -ne 'Valid') { throw "the WebView2 runtime is not signed" }
+          if ($signature.Status -ne 'Valid') { throw "the WebView2 bootstrapper is not signed" }
           if ($signature.SignerCertificate.Subject -notlike '*Microsoft Corporation*') {
-            throw "the WebView2 runtime is not signed by Microsoft"
+            throw "the WebView2 bootstrapper is not signed by Microsoft"
           }
 
       - name: Build the installer

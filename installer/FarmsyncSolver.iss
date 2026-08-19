@@ -58,21 +58,16 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: checkedonce
 
 [Files]
 Source: "{#PackedFolder}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; The full offline runtime, ~200 MB, run only when the runtime is missing. A
-; missing WebView2 Runtime is a blank white window with no error, which the app
-; itself cannot report. The offline file is carried instead of the 2 MB
-; bootstrapper so a first install never waits on a ~200 MB download, and never
-; hangs when that download is slow or blocked.
-; nocompression: the payload is already compressed, so packing it again only
-; makes the build slow without making the Setup.exe smaller.
-Source: "MicrosoftEdgeWebView2RuntimeInstallerX64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall nocompression
+; ~2 MB, run only when the runtime is missing. A missing WebView2 Runtime is a
+; blank white window with no error, which the app itself cannot report.
+Source: "MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{tmp}\MicrosoftEdgeWebView2RuntimeInstallerX64.exe"; Parameters: "/silent /install"; \
+Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; \
   StatusMsg: "Installing the Microsoft Edge WebView2 Runtime..."; \
   Check: not WebView2Installed; Flags: waituntilterminated
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; \
