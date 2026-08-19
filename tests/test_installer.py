@@ -59,13 +59,24 @@ def test_the_webview2_bootstrapper_is_bundled(script: str) -> None:
     assert 'Source: "MicrosoftEdgeWebview2Setup.exe"' in script
 
 
-def test_the_webview2_runtime_is_installed_only_when_missing(script: str) -> None:
-    (run_line,) = [
-        line for line in script.splitlines() if "MicrosoftEdgeWebview2Setup.exe" in line and "Filename:" in line
+def runtime_run_line(script: str) -> str:
+    """The runtime's [Run] entry as one string, with its continuations joined."""
+    joined = re.sub(r"\\\s*\n\s*", " ", script)
+    (line,) = [
+        line for line in joined.splitlines() if "MicrosoftEdgeWebview2Setup.exe" in line and "Filename:" in line
     ]
+    return line
 
+
+def code_block(script: str, header: str) -> str:
+    """One [Code] routine, from its header to its own closing `end;`."""
+    body = script[script.index(header) :]
+    return body[: body.index("\nend;") + len("\nend;")]
+
+
+def test_the_webview2_runtime_is_installed_only_when_missing(script: str) -> None:
     assert "Check: not WebView2Installed" in script
-    assert "/silent /install" in run_line
+    assert "/silent /install" in runtime_run_line(script)
 
 
 def test_the_runtime_check_reads_every_place_it_can_be_registered(script: str) -> None:
@@ -94,3 +105,38 @@ def test_uninstall_deletes_keys_and_logs_together(script: str) -> None:
     """§8.5: logs are user data and follow the same single answer."""
     assert r"{userappdata}\{#AppName}" in script
     assert "DelTree(UserData" in script
+
+
+def test_the_ready_page_warns_before_the_runtime_download_starts(script: str) -> None:
+    """#32: a silent step is only frightening when nobody said it was coming."""
+    memo = code_block(script, "function UpdateReadyMemo")
+
+    assert "not WebView2Installed" in memo
+    assert "200 MB" in memo
+    assert "minutes" in memo
+
+
+def test_the_ready_page_keeps_every_part_inno_hands_it(script: str) -> None:
+    """Naming the parts one by one would drop [Components] the day one is added."""
+    memo = code_block(script, "function UpdateReadyMemo")
+
+    for part in ("MemoUserInfoInfo", "MemoDirInfo", "MemoTypeInfo",
+                 "MemoComponentsInfo", "MemoGroupInfo", "MemoTasksInfo"):
+        assert f"AddMemo(Result, {part}," in memo
+
+
+def test_the_runtime_step_says_it_downloads_and_installs(script: str) -> None:
+    line = runtime_run_line(script)
+
+    assert "Downloading and installing" in line
+    assert "200 MB" in line
+
+
+def test_the_progress_bar_moves_while_the_runtime_downloads(script: str) -> None:
+    """A still bar for several minutes reads as a dead installer."""
+    line = runtime_run_line(script)
+
+    assert "BeforeInstall: MarqueeOn" in line
+    assert "AfterInstall: MarqueeOff" in line
+    assert "npbstMarquee" in script
+    assert "npbstNormal" in script

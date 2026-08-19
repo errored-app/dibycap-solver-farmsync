@@ -706,6 +706,7 @@ before.
 | --- | --- |
 | **Per-user install** to `%LOCALAPPDATA%\Programs\FarmsyncSolver` | No admin, no UAC — not at install and, crucially, **not on every auto-update**. Per-machine would put a UAC prompt in front of a silent update, which this user may well answer No to. |
 | **Bundle the WebView2 Runtime bootstrapper** (~2 MB), installed only if missing | A missing runtime is a **blank white window with no error** — the worst failure mode for this user, and undetectable from inside a window that never loaded. |
+| **Warn about the runtime download, and keep the bar moving** — a Ready-page note and a marquee during the step | The bootstrapper pulls ~200 MB from Microsoft before it installs anything, so on a slow line the window sits still for minutes and reads as dead (#32). Bundling the full runtime was tried and reverted: it grows Setup.exe from ~32 MB to ~233 MB, moving the same wait onto every download, including the ones that already have the runtime. |
 | **Single instance** via an Inno Setup `AppMutex` the app creates at startup | Two copies would both open (ports are auto-picked) and **both spend solves on the same accounts**. The same mutex gives the silent installer a reliable "is it running" signal. |
 | **Start-menu and desktop shortcuts** | The user opens the app from the Start menu. |
 | **Uninstall asks "Also delete your saved keys?", defaulting to No** | Keys survive an ordinary uninstall. Default-No stops a silent uninstall eating them. Logs follow the same answer (§8.5). |

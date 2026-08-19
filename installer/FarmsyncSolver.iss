@@ -67,9 +67,13 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
+; The bundled file is a ~2 MB bootstrapper: it pulls about 200 MB from Microsoft
+; before it installs anything. That wait is minutes long on a slow line, so the
+; step says what it is doing and the bar keeps moving (issue #32).
 Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; \
-  StatusMsg: "Installing the Microsoft Edge WebView2 Runtime..."; \
-  Check: not WebView2Installed; Flags: waituntilterminated
+  StatusMsg: "Downloading and installing the Microsoft Edge WebView2 Runtime (about 200 MB). This can take a few minutes..."; \
+  Check: not WebView2Installed; Flags: waituntilterminated; \
+  BeforeInstall: MarqueeOn; AfterInstall: MarqueeOff
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; \
   Flags: nowait postinstall skipifsilent
 
@@ -94,6 +98,49 @@ begin
     VersionPresent(HKLM, 'SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\' + WebView2Client) or
     VersionPresent(HKLM64, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\' + WebView2Client) or
     VersionPresent(HKCU, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\' + WebView2Client);
+end;
+
+procedure MarqueeOn;
+begin
+  { waituntilterminated blocks this thread, so no percentage can be counted.
+    A marquee at least shows the installer is alive. }
+  WizardForm.ProgressGauge.Style := npbstMarquee;
+end;
+
+procedure MarqueeOff;
+begin
+  WizardForm.ProgressGauge.Style := npbstNormal;
+end;
+
+procedure AddMemo(var Memo: String; Part, NewLine: String);
+begin
+  { Every part Inno hands us, in Inno's own order. Naming them one by one would
+    quietly drop the day a [Components] or [Types] section is added. }
+  if Part = '' then
+    Exit;
+  if Memo <> '' then
+    Memo := Memo + NewLine + NewLine;
+  Memo := Memo + Part;
+end;
+
+function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo,
+  MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+begin
+  Result := '';
+  AddMemo(Result, MemoUserInfoInfo, NewLine);
+  AddMemo(Result, MemoDirInfo, NewLine);
+  AddMemo(Result, MemoTypeInfo, NewLine);
+  AddMemo(Result, MemoComponentsInfo, NewLine);
+  AddMemo(Result, MemoGroupInfo, NewLine);
+  AddMemo(Result, MemoTasksInfo, NewLine);
+
+  { Said before Install is pressed, not after the window has already gone still. }
+  if not WebView2Installed then
+    Result := Result + NewLine + NewLine +
+      'Microsoft Edge WebView2 Runtime:' + NewLine +
+      Space + 'This PC does not have it, so Setup will download it from' + NewLine +
+      Space + 'Microsoft (about 200 MB). This can take a few minutes on' + NewLine +
+      Space + 'a slow connection.' + NewLine;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
