@@ -132,6 +132,17 @@ A published release newer than the version this app was built as. An update is
 **found** by a check, **offered** by the update bar, and **handed over** to the
 installer. Found is not offered mid-run, and offered is never a dialog.
 
+While it is offered, an update is at one of four stages:
+
+- **Ready** — waiting for the user to press the button.
+- **Locked** — a run is going, so the button is dead and the bar says why.
+- **Downloading** — fetching the installer and checking it.
+- **Failed** — the download or the checksum did not come off. This version keeps
+  running, and the button may be pressed again.
+
+A check that nobody could make leaves the offer exactly as it was. The bar must
+not vanish because the user went offline.
+
 ## Update bar
 
 The strip across the top of Home that names a found update and offers one
