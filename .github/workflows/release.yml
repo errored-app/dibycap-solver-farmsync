@@ -15,10 +15,13 @@ jobs:
 
     steps:
       - name: Check out the tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
+      # An exact version, not a floating major: setup-uv stopped publishing
+      # `@v8` and up after the tj-actions attack, so there is no tag to follow.
+      # A bump here is a deliberate edit, which is the point.
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
 
@@ -106,7 +109,7 @@ jobs:
           Get-Content dist/SHA256SUMS.txt
 
       - name: Publish the release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           # A tag holding a dash is a pre-release, which releases/latest skips,
           # so no user's app auto-updates to it.
