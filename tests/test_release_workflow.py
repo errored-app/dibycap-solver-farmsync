@@ -131,7 +131,7 @@ def test_the_installer_gets_the_version_from_the_tag(commands: str) -> None:
 
 
 def test_a_failed_installer_build_fails_the_release(steps: list[dict[str, Any]]) -> None:
-    (build,) = [step for step in steps if "iscc.exe" in step.get("run", "")]
+    (build,) = [step for step in steps if "FarmsyncSolver.iss" in step.get("run", "")]
 
     assert "throw" in build["run"]
 
@@ -141,7 +141,7 @@ def test_the_webview2_bootstrapper_is_fetched_before_the_installer_is_built(
 ) -> None:
     runs = [step.get("run", "") for step in steps]
     fetch = next(i for i, run in enumerate(runs) if "MicrosoftEdgeWebview2Setup.exe" in run)
-    build = next(i for i, run in enumerate(runs) if "iscc.exe" in run)
+    build = next(i for i, run in enumerate(runs) if "FarmsyncSolver.iss" in run)
 
     assert fetch < build
 
@@ -154,13 +154,17 @@ def test_the_setup_exe_is_published_and_checksummed(
 
     # The checksums are taken after the installer exists, or its line is missing.
     runs = [step.get("run", "") for step in steps]
-    build = next(i for i, run in enumerate(runs) if "iscc.exe" in run)
+    build = next(i for i, run in enumerate(runs) if "FarmsyncSolver.iss" in run)
     checksums = next(i for i, run in enumerate(runs) if "SHA256SUMS.txt" in run)
     assert build < checksums
 
 
-def test_inno_setup_is_pinned_like_every_other_tool(commands: str) -> None:
-    assert "choco install innosetup --version=" in commands
+def test_a_runner_without_inno_setup_fails_the_release(steps: list[dict[str, Any]]) -> None:
+    """The image supplies it; a missing one must not surface as a path error."""
+    (find,) = [step for step in steps if step.get("name") == "Find Inno Setup"]
+
+    assert "Test-Path" in find["run"]
+    assert "throw" in find["run"]
 
 
 def test_the_fetched_bootstrapper_is_checked_before_it_is_packed(
