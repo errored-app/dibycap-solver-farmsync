@@ -9,6 +9,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
+# The offline WebView2 Runtime installer the Setup.exe carries.
+RUNTIME = "MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
 
 
 @pytest.fixture(scope="module")
@@ -136,11 +138,11 @@ def test_a_failed_installer_build_fails_the_release(steps: list[dict[str, Any]])
     assert "throw" in build["run"]
 
 
-def test_the_webview2_bootstrapper_is_fetched_before_the_installer_is_built(
+def test_the_webview2_runtime_is_fetched_before_the_installer_is_built(
     steps: list[dict[str, Any]],
 ) -> None:
     runs = [step.get("run", "") for step in steps]
-    fetch = next(i for i, run in enumerate(runs) if "MicrosoftEdgeWebview2Setup.exe" in run)
+    fetch = next(i for i, run in enumerate(runs) if RUNTIME in run)
     build = next(i for i, run in enumerate(runs) if "FarmsyncSolver.iss" in run)
 
     assert fetch < build
@@ -167,11 +169,11 @@ def test_a_runner_without_inno_setup_fails_the_release(steps: list[dict[str, Any
     assert "throw" in find["run"]
 
 
-def test_the_fetched_bootstrapper_is_checked_before_it_is_packed(
+def test_the_fetched_runtime_is_checked_before_it_is_packed(
     steps: list[dict[str, Any]],
 ) -> None:
     """Those bytes ship inside the Setup.exe a user runs."""
-    (fetch,) = [step for step in steps if "MicrosoftEdgeWebview2Setup.exe" in step.get("run", "")]
+    (fetch,) = [step for step in steps if RUNTIME in step.get("run", "")]
 
     assert "Get-AuthenticodeSignature" in fetch["run"]
     assert "Microsoft Corporation" in fetch["run"]

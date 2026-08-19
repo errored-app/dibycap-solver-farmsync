@@ -25,4 +25,7 @@ dist/
 *.spec
 
 # Downloaded by the release workflow, never committed.
-installer/MicrosoftEdgeWebview2Setup.exe
+installer/MicrosoftEdgeWebView2RuntimeInstallerX64.exe
+
+# Local VM test scratch (not part of the build)
+.local/

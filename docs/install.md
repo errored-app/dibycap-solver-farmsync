@@ -18,6 +18,9 @@ The installer also installs the **Microsoft Edge WebView2 Runtime**, but only if
 your PC does not have it. The app draws its window with it. Without it, the
 window opens white and empty.
 
+The runtime is carried inside the installer, so this step needs no internet and
+takes about a minute. This is why the download is around 250 MB.
+
 ## Updates
 
 The app keeps itself up to date. You do nothing.
