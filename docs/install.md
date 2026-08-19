@@ -20,7 +20,9 @@ window opens white and empty.
 
 ## Updates
 
-The app updates itself. Updates are silent. The blue box is not shown again.
+Self-update is not built yet. Until it is, download the new
+`FarmsyncSolver-Setup-<version>.exe` and run it over the top. Your keys stay.
+The blue box is not shown again after the first install.
 
 ## One copy at a time
 

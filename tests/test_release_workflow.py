@@ -157,3 +157,18 @@ def test_the_setup_exe_is_published_and_checksummed(
     build = next(i for i, run in enumerate(runs) if "iscc.exe" in run)
     checksums = next(i for i, run in enumerate(runs) if "SHA256SUMS.txt" in run)
     assert build < checksums
+
+
+def test_inno_setup_is_pinned_like_every_other_tool(commands: str) -> None:
+    assert "choco install innosetup --version=" in commands
+
+
+def test_the_fetched_bootstrapper_is_checked_before_it_is_packed(
+    steps: list[dict[str, Any]],
+) -> None:
+    """Those bytes ship inside the Setup.exe a user runs."""
+    (fetch,) = [step for step in steps if "MicrosoftEdgeWebview2Setup.exe" in step.get("run", "")]
+
+    assert "Get-AuthenticodeSignature" in fetch["run"]
+    assert "Microsoft Corporation" in fetch["run"]
+    assert "throw" in fetch["run"]

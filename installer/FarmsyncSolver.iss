@@ -34,8 +34,9 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 UsePreviousAppDir=yes
 
-; The mutex the app takes at startup. Setup refuses to run while the app is open,
-; and the silent updater uses the same name as its "is it running" signal.
+; The mutex the app takes at startup. Setup refuses to run while the app is open.
+; The updater exits the app first, which drops the mutex, so a silent update is
+; not blocked by it (spec 12).
 AppMutex=FarmsyncSolverSingleInstance
 CloseApplications=yes
 RestartApplications=yes
@@ -86,10 +87,12 @@ end;
 
 function WebView2Installed: Boolean;
 begin
-  { Per-machine (both registry views) or per-user. Any one of them is enough. }
+  { Per-machine, in both registry views — Setup is 32-bit, so plain HKLM is the
+    redirected one and HKLM64 is needed for the native view — or per-user.
+    Any one of them is enough. }
   Result :=
     VersionPresent(HKLM, 'SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\' + WebView2Client) or
-    VersionPresent(HKLM, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\' + WebView2Client) or
+    VersionPresent(HKLM64, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\' + WebView2Client) or
     VersionPresent(HKCU, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\' + WebView2Client);
 end;
 

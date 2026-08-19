@@ -72,7 +72,7 @@ def test_the_runtime_check_reads_every_place_it_can_be_registered(script: str) -
     checks = script[script.index("function WebView2Installed") :]
 
     assert r"HKLM, 'SOFTWARE\WOW6432Node" in checks
-    assert r"HKLM, 'SOFTWARE\Microsoft" in checks
+    assert r"HKLM64, 'SOFTWARE\Microsoft" in checks
     assert r"HKCU, 'SOFTWARE\Microsoft" in checks
 
 

@@ -67,16 +67,25 @@ jobs:
           Compress-Archive -Path dist/FarmsyncSolver -DestinationPath "dist/$name"
 
       # windows-latest carries no Inno Setup, and the installer is the only
-      # artifact a real user ever runs.
+      # artifact a real user ever runs. Pinned, like every action here: an
+      # unpinned tool cannot rebuild an old tag.
       - name: Install Inno Setup
-        run: choco install innosetup --no-progress -y
+        run: choco install innosetup --version=6.4.3 --no-progress -y
 
       # The bootstrapper, not the full runtime: ~2 MB, and it installs nothing
       # when the runtime is already there.
+      # These bytes end up inside the Setup.exe users run, so the Microsoft
+      # signature on them is checked before they are packed.
       - name: Fetch the WebView2 bootstrapper
         run: |
-          Invoke-WebRequest -Uri https://go.microsoft.com/fwlink/p/?LinkId=2124703 `
-            -OutFile installer/MicrosoftEdgeWebview2Setup.exe
+          $file = "installer/MicrosoftEdgeWebview2Setup.exe"
+          Invoke-WebRequest -Uri https://go.microsoft.com/fwlink/p/?LinkId=2124703 -OutFile $file
+          $signature = Get-AuthenticodeSignature $file
+          "status=$($signature.Status) subject=$($signature.SignerCertificate.Subject)"
+          if ($signature.Status -ne 'Valid') { throw "the WebView2 bootstrapper is not signed" }
+          if ($signature.SignerCertificate.Subject -notlike '*Microsoft Corporation*') {
+            throw "the WebView2 bootstrapper is not signed by Microsoft"
+          }
 
       - name: Build the installer
         run: |
