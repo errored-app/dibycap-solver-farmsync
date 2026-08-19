@@ -17,7 +17,7 @@ from nicegui import ui
 
 from .. import config, engine
 from .._version import APP_NAME, VERSION
-from . import close_guard, home, settings, setup
+from . import close_guard, home, settings, setup, theme
 
 WINDOW_WIDTH = 900
 WINDOW_HEIGHT = 640
@@ -72,7 +72,14 @@ def build_page() -> None:
     Every hop back to Home re-reads the config first. Settings can change the
     keys, and one cheap file read is a smaller price than a screen showing a key
     the file no longer holds.
+
+    The theme is put on before the first screen and never again from here: it
+    lives on `<body>`, above the column the screens are swapped inside, so it
+    survives every swap. Settings repaints it the moment the user picks another.
     """
+    theme.install()
+    theme.wear(_config.theme)
+
     screen = ui.column().classes("w-full")
 
     def swap(draw: Callable[[], None]) -> None:
@@ -88,7 +95,11 @@ def build_page() -> None:
         swap(lambda: home.build(*_run_values(_config), show_settings))
 
     def show_settings() -> None:
-        swap(lambda: settings.build(_config.speed_percent, back_to_home, forget_and_setup))
+        swap(
+            lambda: settings.build(
+                _config.speed_percent, _config.theme, back_to_home, forget_and_setup
+            )
+        )
 
     def forget_and_setup() -> None:
         # Re-read first: the keys are gone from the file, and the copy this

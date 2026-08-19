@@ -10,7 +10,7 @@ from nicegui.testing import User
 
 from farmsync_solver import config, keys
 from farmsync_solver._version import VERSION
-from farmsync_solver.ui import messages, settings
+from farmsync_solver.ui import messages, settings, theme
 
 pytest_plugins = ["nicegui.testing.user_plugin"]
 
@@ -71,6 +71,91 @@ async def test_speed_offers_the_four_choices_and_saves_the_pick(
     toggle.set_value(50)
     await user.should_see(messages.SETTINGS_SAVED)
     assert config.load(saved_keys).speed_percent == 50
+
+
+# --- ADR 0004: the theme picker --------------------------------------------
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_the_window_opens_wearing_the_saved_theme(
+    user: User, saved_keys: Path, ui_app: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The look is put on the page before the first screen is drawn."""
+    worn: list[str] = []
+    monkeypatch.setattr(theme, "wear", worn.append)
+    config.save_theme("handheld", saved_keys)
+    ui_app.load_config()
+
+    await user.open("/")
+    await user.should_see(marker="settings-gear")
+
+    assert worn == ["handheld"]
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_picking_a_theme_paints_the_window_at_once(
+    user: User, saved_keys: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The window is the answer to the click; the file catches up after."""
+    await _open_settings(user)
+    worn: list[str] = []
+    monkeypatch.setattr(theme, "wear", worn.append)
+
+    user.find(marker="theme-adventure").click()
+
+    await user.should_see(messages.SETTINGS_SAVED)
+    assert worn == ["adventure"]
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_the_theme_picker_offers_every_shipped_theme(
+    user: User, saved_keys: Path
+) -> None:
+    await _open_settings(user)
+
+    await user.should_see(messages.SETTINGS_THEME_TITLE)
+    for key in config.THEME_CHOICES:
+        await user.should_see(messages.theme_name(key))
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_picking_a_theme_saves_it(user: User, saved_keys: Path) -> None:
+    await _open_settings(user)
+    assert config.load(saved_keys).theme == config.DEFAULT_THEME
+
+    user.find(marker="theme-console").click()
+
+    await user.should_see(messages.SETTINGS_SAVED)
+    assert config.load(saved_keys).theme == "console"
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_the_picked_theme_is_the_marked_one_when_the_screen_opens(
+    user: User, saved_keys: Path, ui_app: ModuleType
+) -> None:
+    config.save_theme("adventure", saved_keys)
+    ui_app.load_config()
+
+    await _open_settings(user)
+    tile = next(iter(user.find(marker="theme-adventure").elements))
+    other = next(iter(user.find(marker="theme-modern").elements))
+
+    assert "fs-tile-picked" in tile.classes
+    assert "fs-tile-picked" not in other.classes
+
+
+@pytest.mark.nicegui_main_file("tests/nicegui_main.py")
+async def test_a_run_does_not_lock_the_theme(
+    user: User, saved_keys: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR 0004: keys and Speed change what a run does. A theme changes paint."""
+    monkeypatch.setattr(settings, "is_running", lambda: True)
+
+    await _open_settings(user)
+    user.find(marker="theme-handheld").click()
+
+    await user.should_see(messages.SETTINGS_SAVED)
+    assert config.load(saved_keys).theme == "handheld"
 
 
 @pytest.mark.nicegui_main_file("tests/nicegui_main.py")

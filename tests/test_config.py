@@ -41,11 +41,11 @@ def test_saved_keys_come_back(config_file: Path) -> None:
     assert loaded.is_ready is True
 
 
-def test_the_file_holds_exactly_the_four_fields(config_file: Path) -> None:
+def test_the_file_holds_exactly_the_five_fields(config_file: Path) -> None:
     config.save(config.Config(api_key="abc", farm_token="xyz"), config_file)
     written = json.loads(config_file.read_text(encoding="utf-8"))
 
-    assert set(written) == {"version", "api_key", "farm_token", "speed_percent"}
+    assert set(written) == {"version", "api_key", "farm_token", "speed_percent", "theme"}
     assert written["version"] == config.CONFIG_VERSION
 
 
@@ -143,7 +143,7 @@ def test_the_thread_count_is_stored_nowhere(saved_pair: Path) -> None:
     config.save_speed(25, saved_pair)
     written = json.loads(saved_pair.read_text(encoding="utf-8"))
 
-    assert set(written) == {"version", "api_key", "farm_token", "speed_percent"}
+    assert set(written) == {"version", "api_key", "farm_token", "speed_percent", "theme"}
 
 
 def test_forget_my_keys_clears_both_keys_and_keeps_the_speed(config_file: Path) -> None:

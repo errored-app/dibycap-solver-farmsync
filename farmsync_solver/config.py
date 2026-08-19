@@ -3,7 +3,7 @@ r"""The only reader of %APPDATA%\FarmsyncSolver\config.json and DPAPI.
 Spec 10. Three rules shape this module:
 
 - Nothing else in the app knows the path, the file shape, or DPAPI.
-- The file holds exactly four fields. `place_id`, `threads` and `round_delay`
+- The file holds exactly five fields. `place_id`, `threads` and `round_delay`
   are gone: two were dead, and the thread count is derived, never stored.
 - Missing, unparseable and undecryptable all collapse to one behaviour: the bad
   value becomes empty, the app shows Setup. `load` never raises.
@@ -26,6 +26,12 @@ CONFIG_VERSION = 1
 DEFAULT_SPEED_PERCENT = 100
 SPEED_CHOICES = (25, 50, 75, 100)
 
+# The look the user picked. The keys live here rather than in the UI so this
+# module can read the file without importing a screen; what each one looks like
+# is `ui.theme`'s business, and what each one is called is `ui.messages`'.
+DEFAULT_THEME = "modern"
+THEME_CHOICES = ("modern", "handheld", "handheld-color", "console", "adventure")
+
 _log = logging.getLogger(__name__)
 
 
@@ -36,6 +42,7 @@ class Config:
     api_key: str = ""
     farm_token: str = ""
     speed_percent: int = DEFAULT_SPEED_PERCENT
+    theme: str = DEFAULT_THEME
 
     @property
     def is_ready(self) -> bool:
@@ -67,6 +74,7 @@ def load(path: Path | None = None) -> Config:
         api_key=_read_secret(raw.get("api_key"), "api_key"),
         farm_token=_read_secret(raw.get("farm_token"), "farm_token"),
         speed_percent=_read_speed(raw.get("speed_percent")),
+        theme=_read_theme(raw.get("theme")),
     )
 
 
@@ -81,6 +89,7 @@ def save(config: Config, path: Path | None = None) -> None:
             "api_key": _protect(config.api_key),
             "farm_token": _protect(config.farm_token),
             "speed_percent": config.speed_percent,
+            "theme": config.theme,
         },
         indent=2,
     )
@@ -106,13 +115,32 @@ def save_speed(percent: int, path: Path | None = None) -> Config:
     return saved
 
 
+def save_theme(theme: str, path: Path | None = None) -> Config:
+    """Save the picked look, keeping everything else as it is.
+
+    Same shape as `save_speed`, and same reason for re-reading the file: only
+    the theme is changing, and the file is the newest word on the rest.
+
+    Unlike the keys and Speed this one is allowed to change mid-run (ADR 0004):
+    a theme touches nothing the engine is doing.
+    """
+    if theme not in THEME_CHOICES:
+        raise ValueError(f"theme={theme!r} is not one of {THEME_CHOICES}")
+
+    saved = replace(load(path), theme=theme)
+    save(saved, path)
+    _log.info("theme saved theme=%s", theme)
+    return saved
+
+
 def forget_keys(path: Path | None = None) -> Config:
     """Spec 4.3: drop both keys, keep the speed, and answer with what survives.
 
     A rewrite rather than a delete: the file keeps the speed the user picked, and
     the app lands on Setup because the keys are gone, not because a file is.
     """
-    remaining = Config(speed_percent=load(path).speed_percent)
+    kept = load(path)
+    remaining = Config(speed_percent=kept.speed_percent, theme=kept.theme)
     save(remaining, path)
     _log.info("keys forgotten")
     return remaining
@@ -136,6 +164,17 @@ def _read_speed(value: object) -> int:
     if isinstance(value, int) and not isinstance(value, bool) and value in SPEED_CHOICES:
         return value
     return DEFAULT_SPEED_PERCENT
+
+
+def _read_theme(value: object) -> str:
+    """A theme nobody ships reads as the default rather than as a broken file.
+
+    A file written by a newer version, or edited by hand, must not leave the app
+    with no look at all: the worst it can do is put the user back on Modern.
+    """
+    if isinstance(value, str) and value in THEME_CHOICES:
+        return value
+    return DEFAULT_THEME
 
 
 # --- Windows DPAPI, current-user scope, value level -------------------------

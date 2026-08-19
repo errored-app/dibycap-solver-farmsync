@@ -98,6 +98,8 @@ SETTINGS_COPY_DIAGNOSTICS = "Copy diagnostics"
 SETTINGS_COPIED = "Copied. Paste it where you ask for help."
 SETTINGS_OPEN_LOGS = "Open log folder"
 SETTINGS_LOGS_FAILED = "Could not open the log folder."
+SETTINGS_THEME_TITLE = "Theme"
+SETTINGS_THEME_NOTE = "Changes how the app looks. Nothing else changes."
 SETTINGS_UPDATES_TITLE = "Updates"
 SETTINGS_UPDATES_NOTE = "The app checks for a new version each time it opens."
 SETTINGS_CHECK_UPDATES = "Check for updates"
@@ -139,6 +141,26 @@ def name_of(sentence: str) -> str:
 def speed_choice(percent: int) -> str:
     """The label on one Speed button. A percentage, never a thread count."""
     return f"{percent}%"
+
+
+# What each theme is called on screen. The keys are `config.THEME_CHOICES`; the
+# looks themselves live in `ui.theme`, and neither module says the other's part.
+THEME_NAME = {
+    "modern": "Modern",
+    "handheld": "Handheld",
+    "handheld-color": "Handheld Color",
+    "console": "Console",
+    "adventure": "Adventure",
+}
+
+
+def theme_name(key: str) -> str:
+    """The name under one theme tile. An unknown key shows the key itself.
+
+    Nothing user-facing should ever be blank: a tile with no name under it reads
+    as a broken screen, where the raw key at least says which one it is.
+    """
+    return THEME_NAME.get(key, key)
 
 
 def outcome_word(result: str) -> str:

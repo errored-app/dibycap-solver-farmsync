@@ -41,8 +41,10 @@ from ..keys import KeyCheck
 from ..updater import Update  # the type only: every call goes through `updater`
 from . import messages
 
-LOW_COLOUR = "text-orange-600"
-NORMAL_COLOUR = "text-gray-900"
+# Roles, not colours: `ui.theme` decides what each one looks like in the theme
+# the user picked, so a low balance stays a warning on all five.
+LOW_COLOUR = "fs-warn"
+NORMAL_COLOUR = "fs-ink"
 EMPTY: dict[str, Any] = {"estimated_solves": 0}
 
 # 5 Hz. Fast enough that the rest countdown ticks smoothly, and the rate spec 4.4
@@ -574,12 +576,12 @@ class _Screen:
 def _update_strip(state: _Screen) -> None:
     """The bar across the top (spec 4.2), built once and hidden until it is needed."""
     with ui.row().classes(
-        "w-full items-center gap-3 bg-blue-50 px-6 py-3"
+        "w-full items-center gap-3 fs-notice px-6 py-3"
     ).mark("update-bar") as row:
         state.update_row = row
         with ui.column().classes("grow gap-0 min-w-0"):
             state.update_headline = ui.label().classes("text-sm font-semibold")
-            state.update_note = ui.label().classes("text-xs text-gray-600")
+            state.update_note = ui.label().classes("text-xs fs-muted")
             state.update_note.set_visibility(False)
         state.update_progress = ui.linear_progress(value=0.0, show_value=False).classes("w-40")
         state.update_progress.set_visibility(False)
@@ -594,7 +596,7 @@ def _left_panel(state: _Screen) -> None:
         state.credit_header = (
             ui.label(messages.HOME_CHECKING).classes("text-xl font-bold").mark("credit-header")
         )
-        state.error_line = ui.label().classes("text-sm text-red-600")
+        state.error_line = ui.label().classes("text-sm fs-bad")
 
         # The tooltip hangs on the wrapper, not on the button: a disabled Quasar
         # button takes no pointer events, so a tooltip inside it would never show
@@ -616,7 +618,7 @@ def _left_panel(state: _Screen) -> None:
             .classes("text-base font-semibold")
             .mark("run-headline")
         )
-        state.message = ui.label().classes("text-sm text-gray-600").mark("run-message")
+        state.message = ui.label().classes("text-sm fs-muted").mark("run-message")
 
         with ui.row().classes("items-center gap-2 h-6"):
             state.spinner = ui.spinner(size="sm").mark("run-spinner")
@@ -633,7 +635,7 @@ def _left_panel(state: _Screen) -> None:
         # user comes back, and a popup raised while they were away is a wall.
         state.details = ui.expansion(messages.HOME_DETAILS).props("dense").mark("run-details")
         with state.details:
-            state.details_text = ui.label().classes("text-xs text-gray-500 break-all")
+            state.details_text = ui.label().classes("text-xs fs-muted break-all")
         state.details.set_visibility(False)
 
 
@@ -662,7 +664,7 @@ def _close_dialog(state: _Screen) -> ui.dialog:
 def _number_row(label: str, marker: str, colour: str = NORMAL_COLOUR) -> ui.label:
     """One of the four counters: its name on the left, its figure on the right."""
     with ui.row().classes("w-full justify-between items-baseline"):
-        ui.label(label).classes("text-sm text-gray-600")
+        ui.label(label).classes("text-sm fs-muted")
         return ui.label("0").classes(f"text-sm font-semibold {colour}").mark(marker)
 
 

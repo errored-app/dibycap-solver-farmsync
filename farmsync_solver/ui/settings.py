@@ -30,10 +30,14 @@ from nicegui import run, ui
 from .. import config, diagnostics, engine, updater
 from .._version import APP_NAME, VERSION
 from ..errors import AppError
-from . import home, messages, setup
+from . import home, messages, setup, theme
 
-GOOD_COLOUR = "text-green-700"
-BAD_COLOUR = "text-red-600"
+GOOD_COLOUR = "fs-ok"
+BAD_COLOUR = "fs-bad"
+
+# The mark on the picked theme tile, and on the four that are not.
+_DOT_ON = "radio_button_checked"
+_DOT_OFF = "radio_button_unchecked"
 
 _log = logging.getLogger(__name__)
 
@@ -44,7 +48,10 @@ def is_running() -> bool:
 
 
 def build(
-    speed_percent: int, on_back: Callable[[], None], on_forget: Callable[[], None]
+    speed_percent: int,
+    theme_key: str,
+    on_back: Callable[[], None],
+    on_forget: Callable[[], None],
 ) -> None:
     """Draw the screen.
 
@@ -53,6 +60,9 @@ def build(
 
     `on_back` returns to Home. `on_forget` is called once the keys are gone, and
     sends the app to Setup.
+
+    The theme comes in the same way the speed does — one stored value, read
+    here, written straight back to the file when the user picks another.
     """
     locked = is_running()
 
@@ -65,20 +75,21 @@ def build(
             ui.label(messages.SETTINGS_TITLE).classes("text-2xl font-bold")
 
         if locked:
-            ui.label(messages.SETTINGS_LOCKED).classes("text-sm text-orange-600")
+            ui.label(messages.SETTINGS_LOCKED).classes("text-sm fs-warn")
 
         _keys_section(on_forget, locked)
         _speed_section(speed_percent, locked)
+        _theme_section(theme_key)
         _updates_section(locked)
         _support_section()
 
-        ui.label(f"{APP_NAME} {VERSION}").classes("text-xs text-gray-500")
+        ui.label(f"{APP_NAME} {VERSION}").classes("text-xs fs-muted")
 
 
 def _keys_section(on_forget: Callable[[], None], locked: bool) -> None:
     """The two key boxes, their one save button, and Forget my keys."""
     ui.label(messages.SETTINGS_KEYS_TITLE).classes("text-lg font-semibold")
-    ui.label(messages.SETTINGS_KEYS_NOTE).classes("text-sm text-gray-500")
+    ui.label(messages.SETTINGS_KEYS_NOTE).classes("text-sm fs-muted")
 
     api_key_box = (
         ui.input(label=messages.SETUP_API_KEY_LABEL, password=True)
@@ -90,7 +101,7 @@ def _keys_section(on_forget: Callable[[], None], locked: bool) -> None:
         .props("outlined")
         .mark("settings-farm-token")
     )
-    note = ui.label().classes("text-sm text-green-700")
+    note = ui.label().classes("text-sm fs-ok")
 
     with ui.row().classes("items-center gap-3"):
         save = ui.button(messages.SETTINGS_SAVE_KEYS)
@@ -115,7 +126,7 @@ def _keys_section(on_forget: Callable[[], None], locked: bool) -> None:
 def _speed_section(speed_percent: int, locked: bool) -> None:
     """The four Speed buttons. A percentage only — no raw thread number."""
     ui.label(messages.SETTINGS_SPEED_LABEL).classes("text-lg font-semibold")
-    ui.label(messages.SETTINGS_SPEED_HELP).classes("text-sm text-gray-500")
+    ui.label(messages.SETTINGS_SPEED_HELP).classes("text-sm fs-muted")
 
     choices = {percent: messages.speed_choice(percent) for percent in config.SPEED_CHOICES}
     speed = ui.toggle(choices, value=speed_percent).mark("speed-toggle")
@@ -136,6 +147,96 @@ def _speed_section(speed_percent: int, locked: bool) -> None:
     speed.set_enabled(not locked)
 
 
+def _theme_section(theme_key: str) -> None:
+    """The five looks, as tiles that show themselves.
+
+    Not locked during a run, and that is the point of ADR 0004: the keys and
+    Speed are locked because changing them mid-run would change what the run is
+    doing, and a theme changes nothing but paint.
+
+    Each tile is painted with its own values rather than the page's, so the row
+    is five small pictures of the app instead of five words.
+    """
+    ui.label(messages.SETTINGS_THEME_TITLE).classes("text-lg font-semibold")
+    ui.label(messages.SETTINGS_THEME_NOTE).classes("text-sm fs-muted")
+
+    note = ui.label().classes("text-sm").mark("theme-note")
+    tiles: dict[str, ui.element] = {}
+    dots: dict[str, ui.icon] = {}
+
+    def pick(key: str) -> None:
+        # Paint first, save second. The window is the answer to the click, and a
+        # write that fails must not leave the user looking at a theme the file
+        # never took.
+        theme.wear(key)
+        for name, tile in tiles.items():
+            chosen = name == key
+            tile.classes(
+                add="fs-tile-picked" if chosen else "",
+                remove="" if chosen else "fs-tile-picked",
+            )
+            dots[name].set_name(_DOT_ON if chosen else _DOT_OFF)
+            dots[name].classes(
+                add="fs-ink" if chosen else "fs-muted",
+                remove="fs-muted" if chosen else "fs-ink",
+            )
+        try:
+            config.save_theme(key)
+        except Exception as error:  # a full disk must not make the click do nothing
+            _say(note, _failure_text(error), good=False)
+            return
+        _say(note, messages.SETTINGS_SAVED, good=True)
+
+    with ui.row().classes("items-stretch gap-3 flex-nowrap"):
+        for key in config.THEME_CHOICES:
+            tiles[key], dots[key] = _theme_tile(key, picked=key == theme_key, on_pick=pick)
+
+
+def _theme_tile(
+    key: str, picked: bool, on_pick: Callable[[str], None]
+) -> tuple[ui.element, ui.icon]:
+    """One tile: a small picture of that theme, its name, and a dot.
+
+    Hands the dot back so the row can move the mark without being rebuilt: spec
+    4.4's build-once rule holds here as much as it does on Home.
+    """
+    look = theme.look(key)
+    classes = "fs-tile p-2 flex flex-col gap-2 w-32"
+    tile = ui.element("div").classes(f"{classes} fs-tile-picked" if picked else classes)
+    tile.mark(f"theme-{key}")
+    tile.on("click", lambda _event, chosen=key: on_pick(chosen))
+
+    with tile:
+        with ui.element("div").style(
+            f"height: 56px; overflow: hidden; background: {look.bg};"
+            f" border-radius: {look.radius_small}; display: flex; flex-direction: column"
+        ):
+            ui.element("div").style(f"height: 10px; background: {look.chrome}")
+            with ui.element("div").style(
+                "flex-grow: 1; display: flex; gap: 4px; padding: 5px"
+            ):
+                with ui.element("div").style(
+                    "width: 32%; display: flex; flex-direction: column; gap: 4px"
+                ):
+                    ui.element("div").style(
+                        f"height: 10px; background: {look.panel};"
+                        f" border: 1px solid {look.panel_edge}"
+                    )
+                    ui.element("div").style(f"flex-grow: 1; background: {look.accent}")
+                ui.element("div").style(
+                    f"flex-grow: 1; background: {look.panel};"
+                    f" border: 1px solid {look.panel_edge}"
+                )
+
+        with ui.row().classes("items-center gap-2 flex-nowrap"):
+            dot = ui.icon(_DOT_ON if picked else _DOT_OFF).classes(
+                "text-base " + ("fs-ink" if picked else "fs-muted")
+            )
+            ui.label(messages.theme_name(key)).classes("text-sm")
+
+    return tile, dot
+
+
 def _updates_section(locked: bool) -> None:
     """Spec 12's manual check. It reports; it never installs from this screen.
 
@@ -144,7 +245,7 @@ def _updates_section(locked: bool) -> None:
     mid-run anyway.
     """
     ui.label(messages.SETTINGS_UPDATES_TITLE).classes("text-lg font-semibold")
-    ui.label(messages.SETTINGS_UPDATES_NOTE).classes("text-sm text-gray-500")
+    ui.label(messages.SETTINGS_UPDATES_NOTE).classes("text-sm fs-muted")
 
     check = ui.button(messages.SETTINGS_CHECK_UPDATES).props("outline").mark("check-updates")
     note = ui.label().classes("text-sm").mark("update-note")
@@ -182,7 +283,7 @@ def _support_section() -> None:
     plain about it on screen, because this is the screen a stuck user is on.
     """
     ui.label(messages.SETTINGS_SUPPORT_TITLE).classes("text-lg font-semibold")
-    ui.label(messages.SETTINGS_SUPPORT_NOTE).classes("text-sm text-gray-500")
+    ui.label(messages.SETTINGS_SUPPORT_NOTE).classes("text-sm fs-muted")
 
     with ui.row().classes("items-center gap-3"):
         copy = ui.button(messages.SETTINGS_COPY_DIAGNOSTICS).mark("copy-diagnostics")
@@ -226,8 +327,8 @@ def _forget_dialog(on_forget: Callable[[], None]) -> ui.dialog:
     """Ask before deleting. The keys cost money to get wrong."""
     with ui.dialog().mark("forget-dialog") as dialog, ui.card().classes("items-stretch gap-3"):
         ui.label(messages.SETTINGS_FORGET_QUESTION).classes("text-lg font-semibold")
-        ui.label(messages.SETTINGS_FORGET_NOTE).classes("text-sm text-gray-500")
-        failure = ui.label().classes("text-sm text-red-600")
+        ui.label(messages.SETTINGS_FORGET_NOTE).classes("text-sm fs-muted")
+        failure = ui.label().classes("text-sm fs-bad")
         with ui.row().classes("justify-end gap-2"):
             ui.button(messages.SETTINGS_CANCEL).props("flat").on("click", dialog.close)
             confirm = ui.button(messages.SETTINGS_FORGET_YES).props("color=negative")

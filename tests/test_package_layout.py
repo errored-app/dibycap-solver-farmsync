@@ -31,6 +31,7 @@ REQUIRED_FILES = [
     "ui/close_guard.py",
     "ui/settings.py",
     "ui/messages.py",
+    "ui/theme.py",
 ]
 
 OUR_MODULES = ["farmsync_solver." + name.replace("/", ".")[:-3] for name in REQUIRED_FILES]

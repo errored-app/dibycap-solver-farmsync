@@ -75,7 +75,7 @@ def build(on_done: Callable[[], None]) -> None:
     """Draw the screen. `on_done` is called once both keys are saved."""
     with ui.column().classes("absolute-center items-stretch w-96 gap-4"):
         ui.label(messages.SETUP_TITLE).classes("text-2xl font-bold")
-        ui.label(messages.SETUP_INTRO).classes("text-sm text-gray-500")
+        ui.label(messages.SETUP_INTRO).classes("text-sm fs-muted")
 
         api_key_box = ui.input(label=messages.SETUP_API_KEY_LABEL, password=True).props(
             "outlined autofocus"
@@ -83,7 +83,7 @@ def build(on_done: Callable[[], None]) -> None:
         farm_token_box = ui.input(label=messages.SETUP_FARM_TOKEN_LABEL, password=True).props(
             "outlined"
         )
-        note = ui.label().classes("text-sm text-green-700")
+        note = ui.label().classes("text-sm fs-ok")
         button = ui.button(messages.SETUP_BUTTON).props("size=lg")
 
         async def press() -> None:

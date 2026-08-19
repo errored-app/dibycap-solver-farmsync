@@ -91,6 +91,15 @@ dibycap code as its detail. Failures are routine, not an alarm.
 A user-facing percentage (25/50/75/100) of the key's reported `max_concurrent`.
 It replaces a raw thread count.
 
+## Theme
+
+The look the user picked, held in the config and applied to the whole window.
+There are five: Modern, Handheld, Handheld Color, Console and Adventure. A theme
+is **paint only** — colour, corner, shadow and font family. It never adds, moves,
+hides or renames a control, so every screen is built once and painted five ways
+([ADR 0004](docs/adr/0004-one-screen-five-themes.md)). Unlike the keys and Speed,
+a theme can be changed while a run is going.
+
 ## Credit
 
 The work left in the dibycap key, counted in **solves**. Money is the secondary
