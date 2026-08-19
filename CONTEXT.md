@@ -88,3 +88,21 @@ those are never given to the logger at all.
 The short bundle a user copies to the clipboard to report trouble: a header
 describing the app and the current run, plus the tail of the current run log.
 It is a copy for pasting, not the whole run log.
+
+## Update
+
+A published release newer than the version this app was built as. An update is
+**found** by a check, **offered** by the update bar, and **handed over** to the
+installer. Found is not offered mid-run, and offered is never a dialog.
+
+## Update bar
+
+The strip across the top of Home that names a found update and offers one
+button. Non-blocking: it waits until the user presses it, and stays until then.
+
+## Hand over
+
+The last step of an update: the app drops its mutex, starts the silent
+installer, and closes itself. Nothing before that point touches the installed
+app, so a check, a download or a checksum that fails leaves the running version
+exactly as it was.

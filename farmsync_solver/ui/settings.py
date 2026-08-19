@@ -1,7 +1,10 @@
 """The Settings screen: keys, Speed, Forget my keys, version.
 
 Spec 4.3. There is no About screen; the version lives at the bottom of this one.
-Check for updates is the same screen's row but a later ticket's work.
+Check for updates is the manual half of spec 12: the silent check runs on
+startup, and this button is what a support conversation can point at. Finding an
+update here does not install it — the bar on Home does that, and only when no run
+is going.
 
 Copy diagnostics and Open log folder are the whole support path (spec 8.4), and
 they stay live during a run: trouble is exactly when a user reaches for them.
@@ -22,9 +25,9 @@ from __future__ import annotations
 import logging
 from typing import Callable
 
-from nicegui import ui
+from nicegui import run, ui
 
-from .. import config, diagnostics, engine
+from .. import config, diagnostics, engine, updater
 from .._version import APP_NAME, VERSION
 from ..errors import AppError
 from . import home, messages, setup
@@ -66,6 +69,7 @@ def build(
 
         _keys_section(on_forget, locked)
         _speed_section(speed_percent, locked)
+        _updates_section(locked)
         _support_section()
 
         ui.label(f"{APP_NAME} {VERSION}").classes("text-xs text-gray-500")
@@ -130,6 +134,45 @@ def _speed_section(speed_percent: int, locked: bool) -> None:
 
     speed.on_value_change(pick)
     speed.set_enabled(not locked)
+
+
+def _updates_section(locked: bool) -> None:
+    """Spec 12's manual check. It reports; it never installs from this screen.
+
+    Locked during a run with the keys and Speed: spec 12 asks for no check at all
+    while a run is going, and the bar that would install what it found is refused
+    mid-run anyway.
+    """
+    ui.label(messages.SETTINGS_UPDATES_TITLE).classes("text-lg font-semibold")
+    ui.label(messages.SETTINGS_UPDATES_NOTE).classes("text-sm text-gray-500")
+
+    check = ui.button(messages.SETTINGS_CHECK_UPDATES).props("outline").mark("check-updates")
+    note = ui.label().classes("text-sm").mark("update-note")
+
+    async def press_check() -> None:
+        # The button goes dead while the call is out, so a second press cannot
+        # start a second check (spec 13, "disabled buttons").
+        check.set_enabled(False)
+        _say(note, messages.SETTINGS_CHECKING_UPDATE, good=True)
+        answer = await run.io_bound(updater.check)
+        check.set_enabled(True)
+        _say(note, _update_answer(answer), good=answer is not None and answer.reached_github)
+
+    check.on("click", press_check)
+    check.set_enabled(not locked)
+
+
+def _update_answer(answer: updater.CheckAnswer | None) -> str:
+    """The one sentence a manual check leaves behind.
+
+    A check nobody could make must not read as "you have the newest version": the
+    user pressed a button and is owed the difference.
+    """
+    if answer is None or not answer.reached_github:
+        return messages.SETTINGS_CHECK_FAILED
+    if answer.update is None:
+        return messages.SETTINGS_UP_TO_DATE
+    return messages.update_found(answer.update.version)
 
 
 def _support_section() -> None:

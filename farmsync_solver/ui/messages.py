@@ -94,6 +94,19 @@ SETTINGS_COPY_DIAGNOSTICS = "Copy diagnostics"
 SETTINGS_COPIED = "Copied. Paste it where you ask for help."
 SETTINGS_OPEN_LOGS = "Open log folder"
 SETTINGS_LOGS_FAILED = "Could not open the log folder."
+SETTINGS_UPDATES_TITLE = "Updates"
+SETTINGS_UPDATES_NOTE = "The app checks for a new version each time it opens."
+SETTINGS_CHECK_UPDATES = "Check for updates"
+SETTINGS_CHECKING_UPDATE = "Checking…"
+SETTINGS_UP_TO_DATE = "You have the newest version."
+SETTINGS_CHECK_FAILED = "Could not check for updates. Try again later."
+
+# The update bar of spec 4.2. It sits across the top of Home, never in a dialog:
+# a dialog on open teaches people to dismiss without reading.
+UPDATE_NOW = "Update now"
+UPDATE_DOWNLOADING = "Downloading… the app closes itself when it is ready."
+UPDATE_FAILED = "The update could not be downloaded. You can keep using this version."
+UPDATE_LOCKED = "Stop the run to update."
 
 # The two words the diagnostics header uses for the key check. Technical, like
 # the rest of the report (spec 8.1) — this text is read by the maintainer.
@@ -164,6 +177,16 @@ def key_works(balance: dict[str, Any]) -> str:
 def credit_header(balance: dict[str, Any]) -> str:
     """The Home header of spec 4.2: solves first, money second."""
     return credit_text(credit.solves(balance), credit.money(balance))
+
+
+def update_ready(version: str) -> str:
+    """The update bar's headline (spec 12). A version number, no release notes."""
+    return f"Version {version} is ready."
+
+
+def update_found(version: str) -> str:
+    """What the manual Check for updates says when it finds one."""
+    return f"{update_ready(version)} Go back to Home to install it."
 
 
 def credit_text(solves: int, money: float) -> str:

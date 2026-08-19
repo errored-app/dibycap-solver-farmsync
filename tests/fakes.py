@@ -7,10 +7,27 @@ from typing import Any
 class FakeResponse:
     """Stands in for a requests/curl_cffi response."""
 
-    def __init__(self, status_code: int = 200, payload: Any = None, text: str = "") -> None:
+    def __init__(
+        self,
+        status_code: int = 200,
+        payload: Any = None,
+        text: str = "",
+        content: bytes = b"",
+        headers: dict[str, str] | None = None,
+    ) -> None:
         self.status_code = status_code
         self._payload = payload
         self.text = text
+        self.content = content
+        self.headers = headers if headers is not None else {}
+
+    def iter_content(self, chunk_size: int = 1) -> Any:
+        """A download, in chunks, like requests. The body is `content`."""
+        for start in range(0, len(self.content), max(1, chunk_size)):
+            yield self.content[start : start + chunk_size]
+
+    def close(self) -> None:
+        return None
 
     def json(self) -> Any:
         if self._payload is None:

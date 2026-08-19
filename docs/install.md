@@ -20,8 +20,25 @@ window opens white and empty.
 
 ## Updates
 
-Self-update is not built yet. Until it is, download the new
-`FarmsyncSolver-Setup-<version>.exe` and run it over the top. Your keys stay.
+The app keeps itself up to date. You do nothing.
+
+- Each time it opens, it looks for a newer version. If there is none, you see
+  nothing at all.
+- If there is one, a bar appears across the top of the Home screen: **"Version
+  X is ready."** with an **Update now** button. It is not a pop-up. It waits
+  until you press it.
+- Press **Update now**. The app downloads the new version, checks it, closes
+  itself, and installs. Then open it again from the Start menu.
+- You can also look at any time: **Settings -> Check for updates**.
+
+Three rules:
+
+- **Not during a run.** Stop the run first. The button is greyed out until you
+  do.
+- **Your keys stay.** An update never asks you to type them again.
+- **A failed update changes nothing.** No internet, or a bad download, and the
+  app keeps working as before. Try again later.
+
 The blue box is not shown again after the first install.
 
 ## One copy at a time
