@@ -44,3 +44,36 @@ def test_no_two_codes_share_a_sentence(code: ErrorCode) -> None:
     others = [messages.for_code(other) for other in ErrorCode if other is not code]
 
     assert messages.for_code(code) not in others
+
+
+def test_a_short_wait_reads_in_seconds() -> None:
+    assert messages.waiting_for(0) == "0s"
+    assert messages.waiting_for(59.9) == "59s"
+
+
+def test_a_wait_past_a_minute_spells_out_both_parts() -> None:
+    assert messages.waiting_for(60) == "1m 0s"
+    assert messages.waiting_for(3599) == "59m 59s"
+
+
+def test_a_wait_past_an_hour_drops_the_seconds() -> None:
+    """The digit nobody reads on an hours-old outage, and the line is long enough."""
+    assert messages.waiting_for(3600) == "1h 0m"
+    assert messages.waiting_for(4353) == "1h 12m"
+
+
+def test_the_waiting_line_leads_with_how_long_then_the_next_knock() -> None:
+    """A static sentence is what made a waiting run look like a frozen one."""
+    line = messages.run_waiting(4353, 43)
+
+    assert line == "Waiting for 1h 12m. Checking again in 43s"
+
+
+def test_the_waiting_line_says_so_while_the_knock_is_out() -> None:
+    """A probe is a real solve, so "in 0s" held for ten seconds is the freeze again."""
+    assert messages.run_waiting(4353, None) == "Waiting for 1h 12m. Checking now…"
+
+
+def test_the_farmsync_retry_leaves_the_timing_to_the_countdown() -> None:
+    """The rest countdown sits right under this line and already says when."""
+    assert "minute" not in messages.RUN_NO_FARMSYNC

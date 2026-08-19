@@ -47,6 +47,11 @@ CREDIT_SECONDS = 10.0
 # on a door that is not answering.
 WAIT_SECONDS = 60.0
 
+# How often a wait that is going nowhere says so in the log. Once per probe would
+# be 60 lines an hour of "still down"; this is 12, which is enough to read an
+# outage's length off the log without reading the gaps between timestamps.
+WAIT_LOG_SECONDS = 300.0
+
 # Discovery is all or nothing now, so a failure is retried quietly rather than
 # skipped per device: one try plus two retries (spec 5.5).
 DISCOVERY_ATTEMPTS = 3
@@ -432,17 +437,41 @@ class Engine:
         Nothing the probe finds is counted. The round number, the table and the
         three totals are left exactly as the interrupted round left them, because
         the round is run again in full once the service is back.
+
+        The elapsed clock belongs to this call, so a service that comes back and
+        dies again starts the count over. That reads wrong only if a probe
+        succeeding is routinely followed by the round failing, and the probe is
+        the same call the round makes.
         """
         _log.info(event("wait", phase="start", code=fault.code.value, detail=fault.detail))
         self._set(state=RunState.WAITING, headline=_waiting_headline(fault), message="")
 
-        while not self._stopping.wait(WAIT_SECONDS):
-            if probe():
-                _log.info(event("wait", phase="end"))
-                return True
+        began = time.monotonic()
+        said = 0.0
+        while True:
+            # The message ticks every second, like the rest does. A wait that
+            # only redrew once a knock would sit unchanged for a minute at a
+            # time, which is a run and a hung window telling the same story.
+            left = WAIT_SECONDS
+            while left > 0:
+                waited = time.monotonic() - began
+                self._set(message=messages.run_waiting(waited, int(left)))
+                if waited - said >= WAIT_LOG_SECONDS:
+                    said = waited
+                    _log.info(event("wait", phase="still", seconds=int(waited)))
+                step = min(TICK_SECONDS, left)
+                if self._stopping.wait(step):
+                    _log.info(event("wait", phase="stopped"))
+                    return False
+                left -= step
 
-        _log.info(event("wait", phase="stopped"))
-        return False
+            # The knock itself. A probe is a real solve, so against a sick
+            # service it is the step most likely to take a while, and "in 0s"
+            # held for ten seconds is the freeze again in miniature.
+            self._set(message=messages.run_waiting(time.monotonic() - began, None))
+            if probe():
+                _log.info(event("wait", phase="end", seconds=int(time.monotonic() - began)))
+                return True
 
     def _probe(self, client: Dibycap, account: dict[str, Any]) -> bool:
         """One real account, sent to ask whether solving is back.

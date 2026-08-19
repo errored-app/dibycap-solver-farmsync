@@ -62,7 +62,8 @@ RUN_RESTING = "Waiting for the next round."
 RUN_STOPPING = "Stopping. Finishing the accounts already started…"
 RUN_STOPPED = "Stopped."
 RUN_NO_ACCOUNTS = "No accounts to check this round."
-RUN_NO_FARMSYNC = "Could not reach farmsync. Trying again in a minute."
+# No "in a minute": the rest countdown right under this line already says when.
+RUN_NO_FARMSYNC = "Could not reach farmsync. Trying again."
 # The two sentences of the Waiting state (ADR 0003). Two, not one: someone whose
 # wifi is off must not read that the service is paused.
 RUN_WAITING_PAUSED = "The captcha service is paused. Waiting for it to come back…"
@@ -188,6 +189,38 @@ def run_progress(done: int, total: int) -> str:
 def run_rest(seconds_left: int) -> str:
     """The countdown line of spec 4.2, shown while the run rests."""
     return f"Next round in {max(0, seconds_left)}s"
+
+
+def waiting_for(seconds: float) -> str:
+    """How long the run has been sitting in Waiting.
+
+    Its own formatter rather than a wider `elapsed`: a wait has no end of its own
+    (ADR 0003) and can run overnight, where a table row cannot. Past the hour the
+    seconds digit is dropped — nobody reads it on an hours-old outage, and the
+    line it sits on has a countdown ticking beside it anyway.
+    """
+    whole = max(0, int(seconds))
+    if whole < 60:
+        return f"{whole}s"
+    if whole < 3600:
+        return f"{whole // 60}m {whole % 60}s"
+    return f"{whole // 3600}h {whole % 3600 // 60}m"
+
+
+def run_waiting(seconds_waited: float, seconds_left: int | None) -> str:
+    """The moving line under the Waiting headline.
+
+    Two facts, in this order: how long this has been going, then when the next
+    knock lands. The first is the news — it is what tells a run apart from a
+    frozen window — and the second is the heartbeat that proves the app is still
+    there between knocks. `seconds_left` of None means the knock is out right
+    now, which is the one moment something is actually happening and also the
+    one most likely to hang.
+    """
+    so_far = f"Waiting for {waiting_for(seconds_waited)}."
+    if seconds_left is None:
+        return f"{so_far} Checking now…"
+    return f"{so_far} Checking again in {max(0, seconds_left)}s"
 
 
 def for_code(code: ErrorCode | None) -> str:

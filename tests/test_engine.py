@@ -705,3 +705,72 @@ def test_a_balance_that_refuses_the_key_still_refuses_the_run(
     assert wait_for(lambda: engine.snapshot().state is RunState.IDLE), engine.snapshot()
     assert engine.snapshot().headline == messages.for_code(ErrorCode.BAD_API_KEY)
     assert farm.calls == 0
+
+
+class StickyService(Service):
+    """A service whose knock can be made to hang, the way a sick one really does."""
+
+    def __init__(self, fault: AppError | None) -> None:
+        super().__init__(fault)
+        self.hang = threading.Event()
+        self.let_go = threading.Event()
+
+    def __call__(self, cookie: str) -> dict[str, Any]:
+        if self.hang.is_set():
+            self.let_go.wait(5.0)
+        return super().__call__(cookie)
+
+
+def test_the_waiting_line_moves_between_knocks(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """A minute of an unchanging screen reads as a hung window, not a run."""
+    engine, _, _ = waiting(monkeypatch, engines)
+    # A knock a long way off, so the ticks between them are what the test sees.
+    monkeypatch.setattr(run, "WAIT_SECONDS", 3.0)
+    monkeypatch.setattr(run, "TICK_SECONDS", 0.02)
+
+    seen: set[str] = set()
+
+    def counted_down() -> bool:
+        seen.add(engine.snapshot().message)
+        return len([line for line in seen if "Checking again" in line]) >= 2
+
+    assert wait_for(counted_down), seen
+
+
+def test_the_waiting_line_says_the_knock_is_out_while_it_hangs(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
+) -> None:
+    """The probe is a real solve: against a sick service it is what takes the time."""
+    service = StickyService(PAUSED)
+    engine, _, _ = build(
+        monkeypatch,
+        engines,
+        client=FakeDibycap(solve=service),
+        farm=FakeFarmsync(accounts(3)),
+    )
+    monkeypatch.setattr(run, "WAIT_SECONDS", FAST_WAIT)
+
+    engine.start(API_KEY, TOKEN, 100)
+    assert wait_for(lambda: engine.snapshot().state is RunState.WAITING), engine.snapshot()
+    service.hang.set()
+
+    try:
+        assert wait_for(lambda: engine.snapshot().message.endswith("Checking now…")), (
+            engine.snapshot()
+        )
+    finally:
+        service.let_go.set()
+
+
+def test_a_long_wait_says_so_in_the_log(
+    monkeypatch: pytest.MonkeyPatch, engines: list[Engine], caplog: pytest.LogCaptureFixture
+) -> None:
+    """An outage's length should be readable off the log, not inferred from gaps."""
+    monkeypatch.setattr(run, "WAIT_LOG_SECONDS", 0.0)
+    with caplog.at_level("INFO"):
+        engine, service, _ = waiting(monkeypatch, engines)
+        assert wait_for(lambda: service.attempts >= 3)
+
+    assert any(text.startswith("wait ") and "phase=still" in text for text in caplog.messages)
