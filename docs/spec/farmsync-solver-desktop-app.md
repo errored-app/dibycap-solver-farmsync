@@ -107,12 +107,19 @@ forever on Windows.
 
 ## 4. Screens
 
-**Three screens: Setup, Home, Settings.** No separate About page. No separate run
-screen. (#6)
+**Four screens: Setup, Home, Settings, History.** No separate About page. No
+separate run screen. (#6, #44)
 
 ```
 shortcut -> Setup (first run only) -> Home -> Start -> Home (running state)
+                                       |
+                                       +-> Settings (gear)
+                                       +-> History (history icon)
 ```
+
+They are written up as §4.1 Setup, §4.2 Home, §4.3 Settings, §4.5 History. §4.4
+sits between the last two because it is a constraint rather than a screen, and
+because half this repo cites it by number.
 
 ### 4.1 Setup
 
@@ -137,10 +144,33 @@ The landing screen on every later open. One screen, two states.
 
 - **Header credit**, solves first and money second: `5,662 captchas left ($8.49)`. Turns **orange** under 1,000 solves. (§7)
 - **Update bar** across the top when a newer release exists: a message plus **Update now**. Non-blocking, persists until acted on. Not a dialog — a dialog on open trains people to dismiss without reading.
-- **Gear button** to Settings.
+- **Gear button** to Settings, and a **history icon** immediately left of it, tooltip *History* (§4.5). Two icons, no words: the top row is chrome, and a label up there would make the gear look like it lost one. (#44)
 - **Background key re-check on open.** One cheap cookie-free call. On failure, a red line explains it and **Start is disabled** until it is fixed. This turns a mid-run mystery failure into a pre-run red line.
 
-**Idle state:** a large **Start** button and the last-run summary.
+**One panel, two faces.** Home is a single tree that is built once and toggled,
+never two screens (§4.4). Everything below is the same panel with parts shown or
+hidden.
+
+**Idle state:** a large **Start** button, and under it the **last-run block** in
+the slot the headline and its message occupy during a run. The four counters, the
+progress indicator and the spend block are hidden while Idle — they are
+instruments for a run that is happening, and at rest they are the wreckage of
+one. (#45)
+
+```
+Last run - Yesterday 23:14
+2h 14m - 1,204 solved - $1.81
+Stopped
+                    All runs
+```
+
+- **Five facts, in that order**: when it started, how long it lasted, captchas solved, spent, how it ended. When-it-started leads because after a restart it is what makes the other four mean anything.
+- **It reads the newest row of `history.json`** (§10.2), held in memory, re-read on app start and on each return to Idle. Never from the snapshot, which forgets everything on close, and never at the panel's 5 Hz.
+- **The clock** reads `Today 23:14` / `Yesterday 23:14` / `19 Aug 23:14`. Not *"last night"* — it needs a definition and is wrong for anyone who runs during the day.
+- **It drops any fact it cannot state.** A row with no `ended_at` has no duration and the middle line is `1,204 solved - $1.81`; a row whose price was never read loses the money the same way. A dash holds a table column's place, and reads as broken mid-sentence.
+- **The ending** is the same wording table §4.5 uses, and carries **no colour**, for the reason in §4.5.
+- **All runs** is a small text button to History. The icon at the top stays; someone reading *$1.81* and wondering about Tuesday should not have to go looking for it.
+- **Before there is any history**, the slot reads *No runs yet.* A `history.json` from a newer version reads as no history and says **No last run to show.** instead, because telling a downgraded user *No runs yet.* is a lie about their own records. The explanation lives on the History screen.
 
 **Running state — "the control room" (#8, prototype variant C):**
 
@@ -150,9 +180,15 @@ The landing screen on every later open. One screen, two states.
   - the plain-words message
   - the progress indicator
   - the numbers: Round, Joined, Captchas solved, Could not check
+  - the **spend block** below a rule: *Spent this run*, `$0.08`, over a working line reading *at $1.50 per 1,000* (§7.1)
   - the credit left and estimated solves
 - **The rest of the window is one live table** of this round's accounts: status badge, username, detail, elapsed. **Newest first.**
-- **One switch above the table: "Show only the ones that failed."** With ~38 failures in a 132-account round, this is the only filter needed.
+- **Two switches above the table.** *"Show only the ones that failed."* — with ~38 failures in a 132-account round, that is the only filter needed. And *"Blur account names."*, which blurs every cell of the Account column past reading.
+  - **Off at every launch, and never saved.** It is for the moment a screenshot is about to be taken, not a way to live.
+  - **`filter: blur(6px)`**, one fixed value in `ui/theme.py`, the same in all five themes. At the table's ~14px type that is gone rather than smudged, and it stays gone in the monospace themes where the glyphs are wider. Note that CSS `blur()` takes a Gaussian **standard deviation**, so 6 here is far stronger than 6 in an image editor. (#40)
+  - **No hover-to-reveal.** The switch is on because a screenshot or a screen share is in play, and a live share with the mouse tracking down the rows defeats it entirely. It is also a per-row hover state on a table repainting at 5 Hz, which is the fight §4.4 exists to avoid. To read a name, turn the switch off.
+  - **It is not redaction, and the app does not pretend otherwise.** The username is still in the page's HTML, and blurred text in a known font is recoverable ([Hill et al., PoPETs 2016](https://petsymposium.org/popets/2016/popets-2016-0047.php)). The threat is a screenshot pasted into a chat, and that is the whole of it. This is why the switch says *Blur*, not *Hide*. (#41)
+  - **Names only.** The credit header and the spend figures stay visible; money says nothing about who you are.
 - **The scrolling console is gone.** Nothing is append-only text; every line is a row with a status.
 
 **Progress indicators**, by run state:
@@ -185,7 +221,7 @@ Reached by the gear button, dismissed by a back arrow.
 | **Check for updates** | manual trigger, so a support conversation has something to point at |
 | **Copy diagnostics** | §8 |
 | **Open log folder** | §8 |
-| **Forget my keys** | deletes the stored keys without needing a hidden `%APPDATA%` path |
+| **Forget my keys** | deletes the stored keys without needing a hidden `%APPDATA%` path. **Leaves the history alone** (§10.2) |
 | About + version | absorbed here; no separate screen |
 
 During a run, keys and Speed are locked with the note *"Stop the run to change
@@ -203,6 +239,81 @@ vanished.
 > Refresh only the non-interactive parts.**
 
 This is a requirement, not a style preference. It shapes §9's engine seam. (#8)
+
+### 4.5 History
+
+Reached by the history icon on Home, dismissed by the back arrow Settings already
+uses. One dense table of every run in `history.json` (§10.2), newest first, with a
+totals strip above it. **No chart.** (#44)
+
+**Totals**, two lines of small text, the second muted:
+
+```
+All time    $1,348.07 - 978,548 captchas solved - 161 runs
+Last 7 days $88.59 - 73,822 captchas solved - 15 runs
+```
+
+All-time names its run count on purpose: `$1,348.07` alone is a number nobody can
+place, and *161 runs* beside it makes it about eight dollars a run. Both lines
+carry the same three facts in the same order, so the second reads as the first
+narrowed rather than as a different sentence.
+
+**Columns**, left to right: **Started - Lasted - Rounds - Joined - Solved - Could
+not check - Spent - Ended.** Eight fit the 900x640 frame in all five themes,
+monospace included. Started carries the year — 500 rows will cross one. The four
+counts sit in the middle in the order the left panel lists them, so the two
+screens read the same way round, and Spent sits beside Ended because those are the
+two columns of the question the screen exists for.
+
+**A run that never ended** shows a dash under Lasted, its real money under Spent —
+solves that were billed were billed — and **App was closed** under Ended.
+
+**What Ended says**, from the record's `ending` and `fault`
+([ADR 0009](../adr/0009-the-history-names-its-own-ending.md)), as one table in
+`ui/messages.py` keyed by the pair and never a sentence built in the screen:
+
+| row | word |
+| --- | --- |
+| `stopped`, no fault | Stopped |
+| `stopped` + `SERVICE_PAUSED` | Stopped while the service was down |
+| `faulted` + `BAD_API_KEY` | Key was rejected |
+| `faulted` + `NO_CREDIT` | Ran out of credit |
+| `crashed` | Something went wrong |
+| no `ended_at` | App was closed |
+
+**The words carry the ending, not the colour.** Handheld flattens `--fs-warn`
+close enough to the ink to vanish, so a colour here would cost a hint on one
+theme and must never cost a fact. No badge, no icon, nothing built per theme
+([ADR 0004](../adr/0004-one-screen-five-themes.md) holds with nothing added).
+
+**Money** is two decimals, and a dash for a run whose `price_per_1k` was never
+read. Those rows are counted by the run count and skipped by the money: a spend of
+unknown is not a spend of nothing.
+
+**Clear history** is a flat red text button on the title row, far right, disabled
+when there is nothing to clear, behind a confirm:
+
+> **Delete every run in your history?**
+> That is 161 runs, and it cannot be undone. Your keys are not touched.
+> *Cancel* - **Delete them**
+
+The count goes in the question because *clear history* is abstract and *161 runs*
+is not. The second sentence is there because **Forget my keys leaves the history
+alone** (§4.3) and the reverse should be as plain. Afterwards the screen is the
+empty state, with no toast to dismiss.
+
+**Empty**, before the first run: the totals and the table are both gone and the
+screen is two lines — ***No runs yet.*** / *Every run you start is written here,
+with what it spent.*
+
+**A file from a newer version** (§10.2) says so in one warn line under the title,
+where the totals would be: *This history was written by a newer version of the
+app.* The table and totals stay off, and **Clear history is not offered at all** —
+this build has promised not to write that file, and a greyed button invites a
+hunt for the way to enable it.
+
+**This screen is drawn once per visit and never refreshed.** It has no timer, so
+§4.4 costs it nothing.
 
 ---
 
@@ -364,7 +475,7 @@ not the count it declined.
 | --- | --- |
 | `estimated_solves` | the headline credit figure |
 | `balance` | the money figure, shown small beside it |
-| `price_per_1k` | never shown; only used to derive the money figure |
+| `price_per_1k` | derives the money figure, and prices the run's spend (below) |
 | `max_concurrent` | drives the Speed control (§5.4) |
 | `active` | **ignored** |
 | `type` | **ignored** |
@@ -375,6 +486,24 @@ not the count it declined.
 - **Zero is terminal.** The run stops and will not start: *"You are out of credit. Top up to keep going."* Deliberately chosen against the fact that attempts are free — at zero the app would still *look* like it is working while fixing nothing, which is exactly the failure this user cannot diagnose.
 - **`active` is ignored** and is **not** subtracted from the thread budget. It read 16 on the first probe and 0 on three later probes with this program not running — a blip, not a resident squatter. Subtracting a jumping number would make Speed mean a different thing minute to minute. If the key really is saturated elsewhere, the solver's own errors already surface it.
 - **`type` is ignored.** Only `"limited"` has ever been observed. An unknown plan word in Settings would be a scary string with no action attached, and nothing branches on it.
+
+### 7.1 What a run has spent
+
+Counted, never measured: `solved x price_per_1k / 1000`, from the app's own
+`solved` counter and the last price the credit header read. **Not** the drop in
+`balance` — the same key can be in use on another machine, and a measured drop
+would charge this run for someone else's work
+([ADR 0007](../adr/0007-spend-is-counted-from-solves.md)). One function in
+`credit.py`, called by Home's spend block, by History's rows and by its totals, so
+a row's money can never disagree with the total above it. (#42)
+
+**On the left panel** (§4.2) it is its own block under a rule, not a fifth
+counter: *Spent this run*, `$0.08` to two decimals, over a working line reading
+*at $1.50 per 1,000* that carries no solve count.
+
+- **It settles at 1 Hz** while the counters keep 5. Money that flickers reads as money being lost.
+- **The block is off the screen until a price has been read**, rather than showing a dash. A spend of unknown is not a spend of nothing.
+- **Once two prices have been billed in one run**, the working line reads *the price changed mid-run* instead of naming one, because neither number is the rate that was paid.
 
 **Zero-balance response shape is unobserved** (the test key has credit). Treat
 `estimated_solves == 0` as out of credit rather than trusting `success` alone.
@@ -410,6 +539,11 @@ bug waiting to happen, and the file is one the user is explicitly invited to pas
 into a chat. If a secret is never handed to the logger, no formatting mistake can
 leak it.
 
+**The blur of §4.2 changes nothing here.** It is a screen treatment for a
+screenshot, and the run log, the diagnostics bundle and `history.json` never held
+a username to begin with. Nothing is obscured in any of them, because there is
+nothing there to obscure.
+
 ### 8.3 Robustness
 
 - **Logging is initialised first** — before config load, before any window — and a global excepthook writes uncaught exceptions to the file. Today a windowed build that dies at import time is a window that never appears and no evidence at all. CI's `--selftest` catches import breakage before release; this catches it on the user's machine.
@@ -444,6 +578,7 @@ farmsync_solver/
   credit.py                    <- what a /balance payload means: solves, money, low
   diagnostics.py               <- the Copy diagnostics report and Open log folder
   errors.py                    <- error types with stable codes; shared by engine, keys, updater
+  history.py                   <- the ONLY file that knows history.json's shape
   keys.py                      <- check_api_key(key), check_farm_token(token)
   logging_setup.py             <- configures stdlib logging once, at process start
   looks.py                     <- the five themes: one block of values per theme, name included
@@ -459,9 +594,20 @@ farmsync_solver/
   ui/
     app.py  setup.py  home.py  settings.py
     closing.py                 <- the close question: the window's X, Ctrl+W, the dialog
+    history.py                 <- the History screen: totals, table, Clear history
     messages.py                <- the one error-code -> friendly-sentence table
     theme.py                   <- the CSS rules that wear a look, and the two calls that apply it
 ```
+
+`history.py` is to `history.json` what `config.py` is to `config.json`: the one
+reader and writer, going through `paths.py`, saving atomically through a temp
+file. **The money is not in it.** Rows store the price and the counts, and
+`credit.py` turns those into money for whoever asks (§7.1), so the file stays a
+record of facts and the arithmetic stays in one place.
+
+**The Engine writes history directly**, at run start, each round end and run end.
+That is not a breach of §9.2's seam, which is about sentences crossing it: a
+history row is facts, the same facts the snapshot already carries.
 
 ### 9.2 The engine/UI seam
 
@@ -615,7 +761,13 @@ Net: all 10 of today's modules are moved, merged, or deleted.
 
 ---
 
-## 10. Configuration and secrets
+## 10. Files the app writes
+
+Two files in `%APPDATA%\FarmsyncSolver`, plus the log folder of §8. Neither is
+ever written to the install folder, which is read-only for a standard user and is
+replaced on every update.
+
+### 10.1 `config.json` — configuration and secrets
 
 **Location:** `%APPDATA%\FarmsyncSolver\config.json`, per Windows user. The
 install folder is read-only for a standard user and is replaced on update, so
@@ -662,6 +814,56 @@ person, one time.
 startup into a typed object, exposes the derived thread count, saves atomically
 (temp file + replace). This removes `src/util.py`'s **import-time** `json.load`,
 which today kills the process before any window can open.
+
+### 10.2 `history.json` — what every run spent
+
+Beside `config.json`, same folder, same atomic write. A versioned object, not a
+bare array: an array has nowhere to hang a version, and without one there is no
+telling an old file from a broken one. (#43)
+
+```json
+{
+  "version": 1,
+  "runs": [
+    {
+      "started_at": 1755690191.4,
+      "ended_at": 1755693791.2,
+      "ending": "stopped",
+      "fault": "SERVICE_PAUSED",
+      "rounds": 12,
+      "joined": 840,
+      "solved": 312,
+      "failed": 402,
+      "speed_percent": 100,
+      "price_per_1k": 1.2
+    }
+  ]
+}
+```
+
+- **No usernames, ever.** The file is safe to open in front of anyone, which is the whole reason the History screen can exist.
+- **Times are epoch seconds**, like `AccountRow.at`; the screen formats them local. A stored local string is a timezone bug waiting for the first user who travels.
+- **The money is not stored.** It is `solved x price_per_1k / 1000` on read (§7.1). Storing the answer beside the inputs invites a row that disagrees with itself.
+- **`price_per_1k` is the last price read during the run**, because that is the rate the user was watching. A run that never read a balance has the field absent, shows a dash, and is skipped by the totals.
+- **`speed_percent` stays** although nothing reads it today. History is the one kind of data that cannot be backfilled, and Speed is locked for the life of a run, so it is an honest per-run fact rather than a snapshot of a moving setting.
+- **`ending` and `fault`**: [ADR 0009](../adr/0009-the-history-names-its-own-ending.md).
+- **Written on run start, each round end, and run end** — not on a clean end only, because stop-and-close kills the process mid-run ([ADR 0008](../adr/0008-a-runs-record-is-written-when-it-starts.md)).
+- **Last 500 runs**, pruned on startup the way logs are.
+
+**How it fails — a run must not die for a record of itself, and must not grow a
+UI element about one either.** None of this is ever shown on screen:
+
+- **A corrupt file at startup** reads as an empty history, but the bad file is renamed to `history.json.corrupt` (one slot, overwritten) before anything writes. Unlike config, which the user can retype, spending records have no fallback, and a truncated write is not a reason to destroy 500 rows. Corrupt means anything that is not an object with an int `version` and a list `runs` — a bare array included.
+- **One unreadable row does not condemn the file.** Rows are read one at a time; a row that is not an object, or whose required fields are missing or the wrong type, is dropped and logged, and the other 499 survive.
+- **A write that fails** is swallowed and logged, never raised, and every later write still tries because the folder may unlock. The first failure logs at `warning` with the reason, later ones at `debug`, so a locked folder cannot put eighty identical lines in a four-hour run's log.
+- **A file written by a newer version is read as empty and never written.** Not the corrupt path: it is left exactly where it is, and this build records nothing for the session. Downgrading is rare; truncating a newer build's rows to write one of ours is not a trade worth making. The visible consequence is §4.5's warn line.
+
+**SQLite was rejected.** A dependency §11.2 keeps deliberately thin, bought
+transactions nothing here needs.
+
+**Forget my keys leaves `history.json` alone.** It is spending records, not
+secrets, and deleting data the user did not ask about is its own bug. Uninstall
+already covers it under §11's single question.
 
 ---
 
@@ -795,6 +997,13 @@ notifications, friendly errors, disabled buttons when an action is unavailable.
 - **A tray icon or background service.** (#9)
 - **A device or per-account browser.** (#13)
 - **Code signing.** (#11 — revisit only if users balk.)
+- **Treating the blur as redaction.** It is for a screenshot going into a chat, not for an adversary. The username stays in the page's HTML under any visual treatment, and reading it means already running code on the machine. (#39, #41)
+- **Obscuring anything beyond the Account column.** The credit header and the spend stay visible; money says nothing about who you are. Widening the switch to "hide the interesting parts" makes it vaguer and harder to explain. (#39)
+- **A spend-over-time chart on History.** With a few hundred rows it is decoration, and it is a design problem of its own. (#39)
+- **A running total since the app opened.** History's all-time and 7-day totals answer the same question from a file that survives a restart. (#39)
+- **Sorting, filtering or exporting the history.** Unanswerable until the screen exists and has been lived with. (#44)
+- **Clearing the history from Forget my keys.** It would delete data the user did not ask about, and uninstall already covers it. (#39)
+- **Any user-facing signal when a history write fails.** The bookkeeping is not the user's problem, and a toast about `history.json` during a run is noise about something they cannot fix. (#43)
 
 ---
 
@@ -806,7 +1015,9 @@ watch.
 1. **Zero-balance response shape is unobserved.** Treat `estimated_solves == 0` as out of credit rather than trusting `success`. (#12)
 2. **What a dead-device account costs when it *does* present a captcha is unmeasured.** Zero captchas were solved in the 8-minute sample, so the "attempts are free" finding has not been tested against a real solve on a dead device. (#14)
 3. **`--selftest` does not prove the window renders.** Only installing the pre-release does. (#11)
-4. **The exact farmsync failure taxonomy is thin** — wrong token, expired token, 5xx and no internet largely collapse into one generic error. Treat farmsync failures generically. (#3)
+4. **What the spend block does when `price_per_1k` has never been read** is untested beyond the rare first-round case. If it turns out to be more than that, the "show nothing until a price is read" rule needs revisiting. (#39, #42)
+5. **Whether the blur switch wants to be a saved preference** is unknown. Revisit only if it turns out to be left on for hours at a time. (#39)
+6. **The exact farmsync failure taxonomy is thin** — wrong token, expired token, 5xx and no internet largely collapse into one generic error. Treat farmsync failures generically. (#3)
 
 ---
 
@@ -829,6 +1040,12 @@ watch.
 | 7 | Credit and limits | [#15](https://github.com/errored-app/dibycap-solver-farmsync/issues/15) |
 | 8 | Logging and support | [#16](https://github.com/errored-app/dibycap-solver-farmsync/issues/16) |
 | 5.5, 9.7 | A paused solve service is not a bad key | [#30](https://github.com/errored-app/dibycap-solver-farmsync/issues/30) |
+| 4, 8.2, 10.2, 14 | Hidden names and the spend record (map) | [#39](https://github.com/errored-app/dibycap-solver-farmsync/issues/39) |
+| 4.2 | The blur on the Account column | [#40](https://github.com/errored-app/dibycap-solver-farmsync/issues/40), [#41](https://github.com/errored-app/dibycap-solver-farmsync/issues/41) |
+| 4.2, 7.1 | The run's spend on the left panel | [#42](https://github.com/errored-app/dibycap-solver-farmsync/issues/42) |
+| 10.2 | The history record, its ending, and how the file fails | [#43](https://github.com/errored-app/dibycap-solver-farmsync/issues/43) |
+| 4.5 | The History screen | [#44](https://github.com/errored-app/dibycap-solver-farmsync/issues/44) |
+| 4.2 | The last-run block on idle Home | [#45](https://github.com/errored-app/dibycap-solver-farmsync/issues/45) |
 
 Prototype and research artifacts live on throwaway branches:
 `prototype/run-view`, `research/nicegui-pyinstaller`, `research/key-validation`,
