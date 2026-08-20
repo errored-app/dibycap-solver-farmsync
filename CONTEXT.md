@@ -53,6 +53,14 @@ same way and no amount of waiting changes that. A paused service used to be one
 and is now a **service fault** instead
 ([ADR 0003](docs/adr/0003-a-run-waits-out-a-down-solve-service.md)).
 
+## Severity
+
+How bad a failure is, said as one of four words the moment the failing call is
+made: *retry* (ordinary, try again), *account done* (this account is finished,
+the run is not), *wait it out* (a **service fault**), *ends run* (a **terminal
+error**). The client that made the call names it, and nothing downstream works
+it out again from an error code.
+
 ## Service fault
 
 A solver error that is about the **solve service** itself — it is paused, or it

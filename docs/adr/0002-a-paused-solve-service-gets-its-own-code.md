@@ -41,6 +41,10 @@ them is a separate call with no measurement behind it yet.
   list, so growing it again is a deliberate edit in both places.
 - `farmsync_solver/engine/dibycap.py` maps the state by dibycap's stable code
   `service_paused` in `TERMINAL_CODES` — never by matching text in an exception.
+
+  > `TERMINAL_CODES` is now `REFUSALS` and carries a severity beside each code
+  > ([ADR 0006](0006-the-client-names-how-bad-a-failure-is.md)). Matching the
+  > stable code rather than the text of an exception is unchanged.
 - The user reads *"The captcha service is paused. Your key is fine. Try again
   later."* — no key fault named, no key action asked for.
 - "Terminal error" no longer means "about the key". It means "ends the run

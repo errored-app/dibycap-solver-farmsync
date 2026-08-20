@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 
 from farmsync_solver.engine import run
-from farmsync_solver.engine.dibycap import COOKIE_FIELD, HOPELESS_CODES, Dibycap
-from farmsync_solver.errors import AppError, ErrorCode, is_terminal, is_waitable
+from farmsync_solver.engine.dibycap import COOKIE_FIELD, Dibycap
+from farmsync_solver.errors import AppError, ErrorCode, Severity, is_terminal, is_waitable
 
 from fakes import FakeResponse, FakeSession, Queue
 
@@ -19,6 +19,10 @@ PACKAGE = Path(__file__).resolve().parent.parent / "farmsync_solver"
 API_KEY = "secret-key-value"
 COOKIE = "WARNING-DO-NOT-SHARE-THIS-super-secret-cookie"
 ACCOUNT = {"id": 4821, "cookie": COOKIE, "username": "someone"}
+
+# The refusals a second attempt cannot change. Spelled out here rather than
+# imported, so the table in `dibycap.py` cannot quietly agree with itself.
+ACCOUNT_DONE_CODES = ["banned", "cookie_dead", "dead_cookie", "moderated"]
 
 
 def answers(*polls: FakeResponse) -> dict[str, Any]:
@@ -101,6 +105,19 @@ def test_a_failed_solve_keeps_the_raw_dibycap_code() -> None:
         client(session).solve(COOKIE)
     assert caught.value.code is ErrorCode.UNKNOWN
     assert caught.value.detail == "captcha_unsolvable"
+    assert caught.value.severity is Severity.RETRY
+
+
+@pytest.mark.parametrize("raw", ACCOUNT_DONE_CODES)
+def test_a_refusal_about_the_account_is_named_account_done(raw: str) -> None:
+    """The client names it, so nothing downstream reads a code table."""
+    session = FakeSession(answers(refused(raw)))
+
+    with pytest.raises(AppError) as caught:
+        client(session).solve(COOKIE)
+    assert caught.value.severity is Severity.ACCOUNT_DONE
+    assert not is_terminal(caught.value)
+    assert not is_waitable(caught.value)
 
 
 @pytest.mark.parametrize(
@@ -252,7 +269,7 @@ def test_a_later_attempt_can_still_succeed() -> None:
     assert run.solve_account(client(session), ACCOUNT, sleep=nothing).result is run.Result.SOLVED
 
 
-@pytest.mark.parametrize("raw", sorted(HOPELESS_CODES))
+@pytest.mark.parametrize("raw", ACCOUNT_DONE_CODES)
 def test_an_account_a_retry_cannot_help_is_tried_once(raw: str) -> None:
     """Today's `src/roblox.py` gives these one attempt too; three would cost time."""
     session = FakeSession(answers(refused(raw)))

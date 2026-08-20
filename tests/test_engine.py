@@ -19,7 +19,7 @@ import pytest
 
 from farmsync_solver.engine import Engine, run
 from farmsync_solver.engine.snapshot import AccountRow, Headline, Result, RunSnapshot, RunState
-from farmsync_solver.errors import AppError, ErrorCode
+from farmsync_solver.errors import AppError, ErrorCode, Severity
 
 from conftest import wait_for
 
@@ -324,7 +324,9 @@ def test_a_terminal_solver_error_ends_the_run(
     monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
 ) -> None:
     def refuse(cookie: str) -> dict[str, Any]:
-        raise AppError(ErrorCode.NO_CREDIT, "insufficient_balance")
+        raise AppError(
+            ErrorCode.NO_CREDIT, "insufficient_balance", severity=Severity.ENDS_RUN
+        )
 
     engine, _, _ = build(
         monkeypatch, engines, client=FakeDibycap(solve=refuse), farm=FakeFarmsync(accounts(6))
@@ -548,8 +550,10 @@ def test_stopping_an_idle_engine_does_nothing() -> None:
 
 # --- Waiting out a down solve service (ADR 0003) ---------------------------
 
-PAUSED = AppError(ErrorCode.SERVICE_PAUSED, "service_paused", service=True)
-UNREACHABLE = AppError(ErrorCode.NO_INTERNET, "dibycap ConnectionError", service=True)
+PAUSED = AppError(ErrorCode.SERVICE_PAUSED, "service_paused", severity=Severity.WAIT_IT_OUT)
+UNREACHABLE = AppError(
+    ErrorCode.NO_INTERNET, "dibycap ConnectionError", severity=Severity.WAIT_IT_OUT
+)
 FAST_WAIT = 0.01
 
 
@@ -677,7 +681,9 @@ def test_a_key_fault_found_while_waiting_still_ends_the_run(
     """Waiting forever on a key nobody but the user can fix would be cruel."""
     engine, service, _ = waiting(monkeypatch, engines)
 
-    service.fault = AppError(ErrorCode.BAD_API_KEY, "invalid_api_key")
+    service.fault = AppError(
+        ErrorCode.BAD_API_KEY, "invalid_api_key", severity=Severity.ENDS_RUN
+    )
 
     assert wait_for(lambda: engine.snapshot().state is RunState.IDLE), engine.snapshot()
     assert engine.snapshot().headline == ErrorCode.BAD_API_KEY
@@ -687,7 +693,9 @@ def test_a_run_starts_and_waits_when_balance_itself_is_down(
     monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
 ) -> None:
     """Start with dibycap fully down: one discovery, then a quiet wait."""
-    down = AppError(ErrorCode.NO_INTERNET, "dibycap ConnectionError", service=True)
+    down = AppError(
+        ErrorCode.NO_INTERNET, "dibycap ConnectionError", severity=Severity.WAIT_IT_OUT
+    )
     client = FakeDibycap(down, down, down, dict(BALANCE), solve=Service(None))
     engine, _, farm = build(monkeypatch, engines, client=client, farm=FakeFarmsync(accounts(2)))
     monkeypatch.setattr(run, "WAIT_SECONDS", FAST_WAIT)

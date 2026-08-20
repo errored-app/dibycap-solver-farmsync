@@ -10,6 +10,11 @@ back. It waits without an end of its own; only the service answering, or Stop,
 gets it out. `SERVICE_PAUSED` leaves `TERMINAL_ERROR_CODES`, which now holds only
 the two faults the user must fix: `BAD_API_KEY` and `NO_CREDIT`.
 
+> `TERMINAL_ERROR_CODES` is gone
+> ([ADR 0006](0006-the-client-names-how-bad-a-failure-is.md)): the client names
+> `Severity.ENDS_RUN` instead of a set naming the codes. The two faults, and
+> everything else here, stand.
+
 **`/balance` is not a health check for solving.** Measured twice against the live
 key — on 2026-08-18 for ADR 0002, and again on 2026-08-18 while writing this —
 `POST /balance` answered normally (5,662 solves, $8.49) at the same moment every
@@ -56,6 +61,11 @@ worse than the state it leaves (Waiting, still trying, Stop right there).
   `UNKNOWN` an engine bug becomes through `from_exception` — without matching on
   the text of an error, which spec 9.7 refuses. A bug still ends the run: it does
   not heal in a minute.
+
+  > The flag is now `Severity.WAIT_IT_OUT` on the same `AppError`
+  > ([ADR 0006](0006-the-client-names-how-bad-a-failure-is.md)). Still set by
+  > the client that made the call, still never guessed from the text of an
+  > error, and `from_exception` still leaves an engine bug where it cannot wait.
 - `solve_account` now raises on a service fault instead of retrying it. Three
   attempts against a paused service are only a slower way to the same answer, and
   the same function is the probe.

@@ -15,7 +15,7 @@ import re
 import time
 from typing import Any, Callable
 
-from ..errors import AppError, ErrorCode
+from ..errors import AppError, ErrorCode, Severity
 
 API_URL = "https://api.dibycap.com"
 TIMEOUT_SECONDS = 15
@@ -25,20 +25,25 @@ DEFAULT_RETRY_MS = 1000
 MIN_POLL_SECONDS = 0.2
 UNFINISHED_STATUS = ("pending", "solving", "processing")
 
-# Faults about the key, not the account. Named by their stable dibycap code, so
-# nothing here matches on the text of an exception (spec 9.7).
-TERMINAL_CODES: dict[str, ErrorCode] = {
-    "invalid_api_key": ErrorCode.BAD_API_KEY,
-    "insufficient_balance": ErrorCode.NO_CREDIT,
-    "key_disabled": ErrorCode.BAD_API_KEY,
-    "key_expired": ErrorCode.BAD_API_KEY,
-    "service_paused": ErrorCode.SERVICE_PAUSED,
+# Every refusal dibycap has a stable code for, and how bad each one is. This is
+# the only table: the severity travels on the `AppError`, so no caller has to
+# look a code up again. Codes are matched whole, so nothing here reads the text
+# of an exception (spec 9.7).
+#
+# The `ACCOUNT_DONE` codes end the run for nobody, but a second attempt cannot
+# change them, so the worker stops trying. Today's `src/roblox.py` treats the
+# same words this way.
+REFUSALS: dict[str, tuple[ErrorCode, Severity]] = {
+    "invalid_api_key": (ErrorCode.BAD_API_KEY, Severity.ENDS_RUN),
+    "insufficient_balance": (ErrorCode.NO_CREDIT, Severity.ENDS_RUN),
+    "key_disabled": (ErrorCode.BAD_API_KEY, Severity.ENDS_RUN),
+    "key_expired": (ErrorCode.BAD_API_KEY, Severity.ENDS_RUN),
+    "service_paused": (ErrorCode.SERVICE_PAUSED, Severity.WAIT_IT_OUT),
+    "cookie_dead": (ErrorCode.UNKNOWN, Severity.ACCOUNT_DONE),
+    "dead_cookie": (ErrorCode.UNKNOWN, Severity.ACCOUNT_DONE),
+    "moderated": (ErrorCode.UNKNOWN, Severity.ACCOUNT_DONE),
+    "banned": (ErrorCode.UNKNOWN, Severity.ACCOUNT_DONE),
 }
-
-# Failures about the account, not the key. They end the run for nobody, but a
-# second attempt cannot change them, so the worker stops trying. Today's
-# `src/roblox.py` treats the same words this way.
-HOPELESS_CODES = frozenset({"cookie_dead", "dead_cookie", "moderated", "banned"})
 
 # A dibycap code is one lower-case word. Anything else the server sends back is
 # free text, and free text can hold a cookie, so it is dropped rather than
@@ -69,7 +74,11 @@ class Dibycap:
         """The whole `/balance` payload. Raises `AppError` on any trouble."""
         payload = self._accepted(self._post("/balance", {}), "balance")
         if not payload.get("success"):
-            raise AppError(ErrorCode.BAD_API_KEY, str(payload.get("error") or "balance refused"))
+            raise AppError(
+                ErrorCode.BAD_API_KEY,
+                str(payload.get("error") or "balance refused"),
+                severity=Severity.ENDS_RUN,
+            )
 
         _log.info("balance ok solves=%s", payload.get("estimated_solves"))
         return payload
@@ -100,12 +109,16 @@ class Dibycap:
             timings = result.get("timings")
             return timings if isinstance(timings, dict) else {}
 
-        raise AppError(ErrorCode.UNKNOWN, "solve timeout")
+        raise AppError(ErrorCode.UNKNOWN, "solve timeout", severity=Severity.RETRY)
 
     def _accepted(self, response: Any, call: str) -> dict[str, Any]:
         """The payload of a call the key was allowed to make."""
         if response.status_code in REFUSED_STATUS:
-            raise AppError(ErrorCode.BAD_API_KEY, f"{call} http {response.status_code}")
+            raise AppError(
+                ErrorCode.BAD_API_KEY,
+                f"{call} http {response.status_code}",
+                severity=Severity.ENDS_RUN,
+            )
 
         return _as_object(response)
 
@@ -119,19 +132,23 @@ class Dibycap:
             )
         except Exception as error:  # any transport failure reads the same way
             raise AppError(
-                ErrorCode.NO_INTERNET, f"dibycap {type(error).__name__}", service=True
+                ErrorCode.NO_INTERNET,
+                f"dibycap {type(error).__name__}",
+                severity=Severity.WAIT_IT_OUT,
             ) from error
 
 
 def _refusal(payload: dict[str, Any]) -> AppError:
     """The typed error a refused solve becomes, keeping the raw dibycap code.
 
-    Only a paused service is marked `service`: every other refusal is about the
-    key or about the account, and neither is fixed by waiting (ADR 0003).
+    Only a paused service is waited out: every other refusal is about the key or
+    about the account, and neither is fixed by waiting (ADR 0003).
     """
     code = _code_of(payload)
-    mapped = TERMINAL_CODES.get(code, ErrorCode.UNKNOWN)
-    return AppError(mapped, code, service=mapped is ErrorCode.SERVICE_PAUSED)
+    # A refusal not in the table is an ordinary failed attempt: 28.6% of them
+    # fail (spec 2), and the worker's job is to try again.
+    mapped, severity = REFUSALS.get(code, (ErrorCode.UNKNOWN, Severity.RETRY))
+    return AppError(mapped, code, severity=severity)
 
 
 def _code_of(payload: dict[str, Any]) -> str:
@@ -159,9 +176,15 @@ def _as_object(response: Any) -> dict[str, Any]:
     try:
         payload = response.json()
     except Exception as error:
-        raise AppError(ErrorCode.UNKNOWN, "dibycap sent no JSON", service=True) from error
+        raise AppError(
+            ErrorCode.UNKNOWN, "dibycap sent no JSON", severity=Severity.WAIT_IT_OUT
+        ) from error
     if not isinstance(payload, dict):
-        raise AppError(ErrorCode.UNKNOWN, "dibycap sent an unexpected shape", service=True)
+        raise AppError(
+            ErrorCode.UNKNOWN,
+            "dibycap sent an unexpected shape",
+            severity=Severity.WAIT_IT_OUT,
+        )
     return payload
 
 

@@ -10,7 +10,7 @@ from typing import Any, Protocol
 
 from .engine.dibycap import Dibycap
 from .engine.farmsync import Farmsync
-from .errors import AppError, ErrorCode
+from .errors import AppError, ErrorCode, Severity
 
 
 class KeyCheck(Protocol):
@@ -36,7 +36,9 @@ def check_api_key(key: str, session: Any | None = None) -> dict[str, Any]:
 
     solves = balance.get("estimated_solves")
     if not isinstance(solves, int) or isinstance(solves, bool) or solves <= 0:
-        raise AppError(ErrorCode.NO_CREDIT, f"estimated_solves={solves!r}")
+        raise AppError(
+            ErrorCode.NO_CREDIT, f"estimated_solves={solves!r}", severity=Severity.ENDS_RUN
+        )
 
     return balance
 

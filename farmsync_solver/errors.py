@@ -19,36 +19,41 @@ class ErrorCode(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-# A solver failure about the key, not the account (spec 5.5). The first one ends
-# the run, because nothing but the user can fix it and every later account fails
-# the same way. `SERVICE_PAUSED` was here until
-# [ADR 0003](../docs/adr/0003-a-run-waits-out-a-down-solve-service.md): a paused
-# service fixes itself, so the run waits it out instead.
-TERMINAL_ERROR_CODES = frozenset({ErrorCode.BAD_API_KEY, ErrorCode.NO_CREDIT})
+class Severity(str, Enum):
+    """How bad a failure is: what the run has to do about it.
+
+    Named once, by the client that made the failing call, and never worked out
+    again downstream from the code or the text of an error. That is what keeps a
+    *service* `UNKNOWN` apart from the `UNKNOWN` an engine bug becomes (ADR 0003).
+    """
+
+    RETRY = "RETRY"  # ordinary; another attempt may well work
+    ACCOUNT_DONE = "ACCOUNT_DONE"  # this account is finished, the run is not
+    WAIT_IT_OUT = "WAIT_IT_OUT"  # the solve service's own fault; it heals in time
+    ENDS_RUN = "ENDS_RUN"  # nothing but the user can fix it
 
 
 class AppError(Exception):
-    """Any failure the app can name. Never carries a cookie or an API key.
+    """Any failure the app can name. Never carries a cookie or an API key."""
 
-    `service` marks the faults dibycap itself raised about dibycap — a paused
-    service, a call that did not go through, a body that was not JSON. It is set
-    by the client that made the call, never guessed from the text of an error,
-    which is how a *service* `UNKNOWN` stays apart from the `UNKNOWN` an engine
-    bug becomes (ADR 0003).
-    """
-
-    def __init__(self, code: ErrorCode, detail: str = "", *, service: bool = False) -> None:
+    def __init__(
+        self,
+        code: ErrorCode,
+        detail: str = "",
+        *,
+        severity: Severity = Severity.RETRY,
+    ) -> None:
         self.code = code
         self.detail = detail
-        self.service = service
+        self.severity = severity
         super().__init__(f"{code.value}: {detail}" if detail else code.value)
 
     @classmethod
     def from_exception(cls, error: BaseException) -> "AppError":
         """Wrap any exception, keeping an AppError untouched.
 
-        A wrapped exception is never a service fault: this is where an engine bug
-        becomes an `AppError`, and a bug does not heal in a minute.
+        A wrapped exception is only ever worth another try: this is where an
+        engine bug becomes an `AppError`, and a bug does not heal in a minute.
         """
         if isinstance(error, AppError):
             return error
@@ -56,8 +61,8 @@ class AppError(Exception):
 
 
 def is_terminal(error: AppError) -> bool:
-    """True when a solve failure is about the key and must end the run."""
-    return error.code in TERMINAL_ERROR_CODES
+    """True when the first one of these must end the run (spec 5.5)."""
+    return error.severity is Severity.ENDS_RUN
 
 
 def is_waitable(error: AppError) -> bool:
@@ -65,4 +70,4 @@ def is_waitable(error: AppError) -> bool:
 
     The run goes to `Waiting` on one of these rather than ending (ADR 0003).
     """
-    return error.service
+    return error.severity is Severity.WAIT_IT_OUT

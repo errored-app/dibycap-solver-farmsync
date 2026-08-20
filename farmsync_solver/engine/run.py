@@ -28,10 +28,10 @@ from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 from .. import credit
-from ..errors import AppError, ErrorCode, is_terminal, is_waitable
+from ..errors import AppError, ErrorCode, Severity, is_terminal, is_waitable
 from ..logging_setup import event
 
-from .dibycap import HOPELESS_CODES, Dibycap
+from .dibycap import Dibycap
 from .farmsync import Farmsync
 from .snapshot import IDLE, AccountRow, Headline, Result, RunSnapshot, RunState
 
@@ -248,11 +248,17 @@ class Engine:
         self._credit_read_at = time.monotonic()
 
         if credit.solves(balance) <= 0:
-            raise AppError(ErrorCode.NO_CREDIT, "estimated_solves=0")
+            raise AppError(
+                ErrorCode.NO_CREDIT, "estimated_solves=0", severity=Severity.ENDS_RUN
+            )
 
         at_once = credit.max_concurrent(balance)
         if at_once <= 0:
-            raise AppError(ErrorCode.UNKNOWN, "balance carried no max_concurrent")
+            raise AppError(
+                ErrorCode.UNKNOWN,
+                "balance carried no max_concurrent",
+                severity=Severity.ENDS_RUN,
+            )
         return credit.threads(at_once, speed_percent)
 
     def _read_threads(self, client: Dibycap, speed_percent: int) -> tuple[int, AppError | None]:
@@ -414,7 +420,9 @@ class Engine:
 
         self._show_credit(balance)
         if credit.solves(balance) <= 0:
-            raise AppError(ErrorCode.NO_CREDIT, "estimated_solves=0")
+            raise AppError(
+                ErrorCode.NO_CREDIT, "estimated_solves=0", severity=Severity.ENDS_RUN
+            )
 
     def _wait_out(self, fault: AppError, probe: Callable[[], bool]) -> bool:
         """Sit in Waiting until dibycap answers again. `False` when the user stopped.
@@ -627,10 +635,10 @@ def solve_account(
     """Send one account to the solver and name what happened.
 
     Tries up to `MAX_ATTEMPTS` times. The retry is deliberately invisible: the UI
-    is never told an attempt is a second try (spec 5.6). Three answers end it
-    early — a terminal error, which the round loop must see at once; a service
-    fault, which no number of attempts can fix; and a hopeless account, which a
-    second attempt cannot change.
+    is never told an attempt is a second try (spec 5.6). Anything the client
+    named worse than `Severity.RETRY` ends the loop early, and the severity says
+    how: a terminal error is raised for the round loop to see at once, a service
+    fault too, and an account that is done is simply not tried again.
 
     Raises `AppError` for a key fault and for a service fault, and for nothing
     else. A retry against a down service would only be a slower way to reach the
@@ -659,7 +667,7 @@ def solve_account(
             _log.info(
                 event("attempt", account=account_id, number=attempt, detail=detail)
             )
-            if detail in HOPELESS_CODES:
+            if error.severity is Severity.ACCOUNT_DONE:
                 break
 
         if attempt < MAX_ATTEMPTS:
