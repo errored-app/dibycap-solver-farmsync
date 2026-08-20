@@ -248,10 +248,15 @@ def test_the_run_uses_the_thread_count_speed_asks_for(
 ) -> None:
     """Spec 5.4: 50% of this key's `max_concurrent` of 4 is two workers."""
     gate = threading.Event()
+
+    def slow(cookie: str) -> dict[str, Any]:
+        gate.wait(5)
+        return {"solve_ms": 0}
+
     engine, client, _ = build(
         monkeypatch,
         engines,
-        client=FakeDibycap(solve=lambda cookie: gate.wait(5) and {"solve_ms": 0}),
+        client=FakeDibycap(solve=slow),
         farm=FakeFarmsync(accounts(10)),
     )
 
@@ -387,13 +392,18 @@ def test_credit_is_refreshed_while_accounts_are_being_checked(
 ) -> None:
     """Spec 7: every 10 s during a run. Here, every 0 s, so the test is quick."""
     gate = threading.Event()
+
+    def slow(cookie: str) -> dict[str, Any]:
+        gate.wait(5)
+        return {"solve_ms": 0}
+
     engine, _, _ = build(
         monkeypatch,
         engines,
         client=FakeDibycap(
             dict(BALANCE),
             dict(BALANCE, estimated_solves=42),
-            solve=lambda cookie: gate.wait(5) and {"solve_ms": 0},
+            solve=slow,
         ),
         farm=FakeFarmsync(accounts(4)),
         credit_seconds=0.0,

@@ -303,8 +303,10 @@ def _support_section() -> None:
         open_logs = ui.button(messages.SETTINGS_OPEN_LOGS).props("outline").mark("open-logs")
     note = ui.label().classes("text-sm").mark("support-note")
 
-    async def press_copy() -> None:
-        await ui.clipboard.write(diagnostics_text())
+    def press_copy() -> None:
+        # `ui.clipboard.write` is sync and hands back None. Awaiting it raised a
+        # TypeError, which ate the line below and left the button silent.
+        ui.clipboard.write(diagnostics_text())
         _say(note, messages.SETTINGS_COPIED, good=True)
 
     def press_open() -> None:

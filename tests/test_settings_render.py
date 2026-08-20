@@ -38,6 +38,11 @@ async def _open_settings(user: User) -> None:
     await user.should_see(messages.SETTINGS_TITLE)
 
 
+def _element(user: User, marker: str) -> Any:
+    """The one element behind a marker. `Any`: NiceGUI hands back a bare Element."""
+    return next(iter(user.find(marker=marker).elements))
+
+
 @pytest.mark.nicegui_main_file("tests/nicegui_main.py")
 async def test_the_gear_opens_settings_and_the_back_arrow_returns_home(
     user: User, saved_keys: Path
@@ -63,7 +68,7 @@ async def test_speed_offers_the_four_choices_and_saves_the_pick(
     user: User, saved_keys: Path
 ) -> None:
     await _open_settings(user)
-    toggle: Any = next(iter(user.find(marker="speed-toggle").elements))
+    toggle = _element(user, "speed-toggle")
 
     assert list(toggle.options) == list(config.SPEED_CHOICES)
     assert toggle.value == 100
@@ -182,7 +187,7 @@ async def test_cancelling_forget_keeps_the_keys(user: User, saved_keys: Path) ->
     user.find(messages.SETTINGS_CANCEL).click()
 
     await user.should_see(marker="forget-dialog")
-    assert next(iter(user.find(marker="forget-dialog").elements)).value is False
+    assert _element(user, "forget-dialog").value is False
     assert config.load(saved_keys).is_ready is True
 
 
@@ -196,10 +201,10 @@ async def test_a_run_locks_the_keys_and_speed_but_leaves_the_screen_readable(
 
     await user.should_see(messages.SETTINGS_LOCKED)
     await user.should_see(messages.SETTINGS_SPEED_LABEL)  # the rest stays readable
-    assert next(iter(user.find(marker="speed-toggle").elements)).enabled is False
-    assert next(iter(user.find(marker="settings-api-key").elements)).enabled is False
-    assert next(iter(user.find(marker="settings-farm-token").elements)).enabled is False
-    assert next(iter(user.find(marker="settings-back").elements)).enabled is True
+    assert _element(user, "speed-toggle").enabled is False
+    assert _element(user, "settings-api-key").enabled is False
+    assert _element(user, "settings-farm-token").enabled is False
+    assert _element(user, "settings-back").enabled is True
 
 
 @pytest.mark.nicegui_main_file("tests/nicegui_main.py")
@@ -207,7 +212,7 @@ async def test_the_saved_keys_are_never_sent_to_the_page(user: User, saved_keys:
     await _open_settings(user)
 
     for marker in ("settings-api-key", "settings-farm-token"):
-        assert not next(iter(user.find(marker=marker).elements)).value
+        assert not _element(user, marker).value
 
 
 @pytest.mark.nicegui_main_file("tests/nicegui_main.py")
@@ -236,7 +241,7 @@ async def test_copy_diagnostics_puts_the_report_on_the_clipboard(
 
     copied: list[str] = []
 
-    async def remember(text: str) -> None:
+    def remember(text: str) -> None:  # sync, like the real `ui.clipboard.write`
         copied.append(text)
 
     monkeypatch.setattr(ui.clipboard, "write", remember)
@@ -273,7 +278,7 @@ async def test_the_support_buttons_stay_live_during_a_run(
     await _open_settings(user)
 
     for marker in ("copy-diagnostics", "open-logs"):
-        assert all(button.enabled for button in user.find(marker=marker).elements)
+        assert _element(user, marker).enabled
 
 
 @pytest.mark.nicegui_main_file("tests/nicegui_main.py")
@@ -285,13 +290,13 @@ async def test_the_report_carries_the_speed_as_it_is_when_copy_is_pressed(
 
     copied: list[str] = []
 
-    async def remember(text: str) -> None:
+    def remember(text: str) -> None:  # sync, like the real `ui.clipboard.write`
         copied.append(text)
 
     monkeypatch.setattr(ui.clipboard, "write", remember)
     await _open_settings(user)
 
-    toggle: Any = next(iter(user.find(marker="speed-toggle").elements))
+    toggle = _element(user, "speed-toggle")
     toggle.set_value(25)
     await user.should_see(messages.SETTINGS_SAVED)
     user.find(marker="copy-diagnostics").click()

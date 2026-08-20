@@ -11,6 +11,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pyright>=1.1.411",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23",
     "pyyaml>=6.0",
@@ -19,6 +20,17 @@ dev = [
 build = [
     "pyinstaller>=6.0,<7.0",
 ]
+
+# Pylance runs this same analyzer in the editor and reads this block, so what a
+# checkout sees in the terminal and what one dev sees in their editor cannot
+# drift apart. Standard, not strict: strict adds 148 findings, 115 of them
+# lambdas and fake clients in tests, and not one of them a bug.
+[tool.pyright]
+include = ["farmsync_solver", "tests", "scripts", "main.py"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

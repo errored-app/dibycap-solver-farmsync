@@ -12,12 +12,12 @@ WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 
 
 @pytest.fixture(scope="module")
-def workflow() -> dict[str, Any]:
+def workflow() -> dict[Any, Any]:
     return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
 
 
 @pytest.fixture(scope="module")
-def steps(workflow: dict[str, Any]) -> list[dict[str, Any]]:
+def steps(workflow: dict[Any, Any]) -> list[dict[str, Any]]:
     (job,) = workflow["jobs"].values()
     return job["steps"]
 
@@ -27,9 +27,9 @@ def commands(steps: list[dict[str, Any]]) -> str:
     return "\n".join(step.get("run", "") for step in steps)
 
 
-def test_only_a_version_tag_starts_a_release(workflow: dict[str, Any]) -> None:
+def test_only_a_version_tag_starts_a_release(workflow: dict[Any, Any]) -> None:
     # `on` is YAML's `True`, which is why it is looked up both ways.
-    triggers = workflow.get("on", workflow.get(True))
+    triggers: Any = workflow.get("on", workflow.get(True))
 
     assert triggers["push"]["tags"] == ["v*"]
 

@@ -91,7 +91,7 @@ class FakeSession:
 
     def _answer(self, method: str, url: str) -> FakeResponse:
         self.calls.append((method, url))
-        answer = self.answers[url] if isinstance(self.answers, dict) else self.answers
+        answer: Any = self.answers[url] if isinstance(self.answers, dict) else self.answers
         if callable(answer):
             answer = answer()
         if isinstance(answer, Exception):
