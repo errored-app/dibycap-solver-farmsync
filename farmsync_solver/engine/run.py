@@ -14,6 +14,9 @@ Three rules shape the worker body at the bottom of the file:
 - A service fault is dibycap's, not the key's, so the round loop waits it out
   rather than ending the run (ADR 0003).
 - Nothing here prints. A windowed build has no console (spec 2).
+- The run writes its own history row, at start, at each round end and at the
+  end (ADR 0008). That is not a breach of the seam of spec 9.2, which is about
+  sentences crossing it: a row is facts, and `history.py` owns its shape.
 - Nothing here holds a sentence. The snapshot carries a `Headline` member and
   the numbers a line counts; the words are `ui/messages.py`'s (ADR 0005), which
   is why this file imports nothing out of `ui`.
@@ -27,7 +30,7 @@ import time
 from dataclasses import dataclass, replace
 from typing import Any, Callable
 
-from .. import credit
+from .. import credit, history
 from ..errors import AppError, ErrorCode, Severity, is_terminal, is_waitable
 from ..logging_setup import event
 
@@ -103,11 +106,24 @@ class Engine:
         # Set when a service fault has been seen: the workers take no new account,
         # but the run is not over. Cleared once the round has drained.
         self._pausing = threading.Event()
+        # The errors this engine wrapped rather than was handed. A run that ends
+        # on one of these ended on a bug in this file, and its row says
+        # `crashed`; named where the wrapping happens, so nothing works it out
+        # again from the `UNKNOWN` the wrapping leaves behind (ADR 0009). The
+        # errors themselves, not a flag: one round can hold a bug and a key
+        # fault at once, and only the one that ended the run names the ending.
+        self._bugs: list[AppError] = []
         self._loop: threading.Thread | None = None
         self._accounts: queue.Queue[dict[str, Any]] = queue.Queue()
         self._finished: queue.Queue[tuple[str, Outcome | AppError]] = queue.Queue()
         self._rows: queue.Queue[AccountRow] = queue.Queue()
         self._credit_read_at = 0.0
+        # One recorder for the life of the app, like the engine around it: it
+        # holds the record of the run that is on, and `start` puts a new one in
+        # its hands. A folder it could not write to says so once per app rather
+        # than once per run, which is the point of saying it once (ADR 0008).
+        self._history = history.Recorder()
+        self._price_per_1k: float | None = None
 
     # --- the four members the UI gets --------------------------------------
 
@@ -124,6 +140,8 @@ class Engine:
 
         self._stopping.clear()
         self._pausing.clear()
+        self._bugs.clear()
+        self._price_per_1k = None
         _empty(self._accounts)
         _empty(self._finished)
         _empty(self._rows)
@@ -173,8 +191,14 @@ class Engine:
 
     def _run(self, api_key: str, farm_token: str, speed_percent: int) -> None:
         """The round-loop thread: rounds until stopped, or until the key fails."""
+        # The row goes down before anything can fail, and every later write is
+        # made from this thread too, so a folder that will not take one cannot
+        # sit on the click that started the run (ADR 0008).
+        self._history.start(started_at=time.time(), speed_percent=speed_percent)
+
         client = Dibycap(api_key)
         terminal: AppError | None = None
+        waited_on: AppError | None = None
 
         try:
             threads = self._thread_count(client, speed_percent)
@@ -214,10 +238,11 @@ class Engine:
                         fault = self._solve_round(client, found, threads)
                         account = found[0]
                         probe = lambda: self._probe(client, account)
-                self._log_round_end(round_number, found)
+                self._round_ended(round_number, found)
 
                 if fault is not None and is_waitable(fault):
                     if not self._wait_out(fault, probe):
+                        waited_on = fault  # stopped by hand, on this fault
                         break
                     continue  # a fresh round, which discovers again (ADR 0003)
 
@@ -232,8 +257,9 @@ class Engine:
         except Exception as error:  # an engine bug stops the run, quietly (spec 5.5)
             _log.exception(event("run", phase="crashed", detail=f"{type(error).__name__}: {error}"))
             terminal = AppError.from_exception(error)
+            self._bugs.append(terminal)
 
-        self._finish(terminal)
+        self._finish(terminal, waited_on)
 
     def _thread_count(self, client: Dibycap, speed_percent: int) -> int:
         """Read `/balance`, then derive the thread count from it (spec 5.4).
@@ -356,7 +382,9 @@ class Engine:
                 self._finished.put((name, error))
                 return  # a fault about the key; the round loop decides what it means
             except Exception as error:
-                self._finished.put((name, AppError.from_exception(error)))
+                bug = AppError.from_exception(error)  # not a fault the run hit
+                self._bugs.append(bug)
+                self._finished.put((name, bug))
                 return
 
     def _drain(self, client: Dibycap) -> AppError | None:
@@ -512,8 +540,13 @@ class Engine:
                 return
             left -= step
 
-    def _log_round_end(self, number: int, found: list[dict[str, Any]] | None) -> None:
-        """Close the round in the log with the totals the run holds so far."""
+    def _round_ended(self, number: int, found: list[dict[str, Any]] | None) -> None:
+        """Close the round in the log and in the history file, with the run's totals.
+
+        The row is rewritten here and not only at the end, because the commonest
+        way a run ends is the process going away mid-round (ADR 0008): a run that
+        misses this write shows a night of work as nothing at all.
+        """
         current = self._snapshot
         _log.info(
             event(
@@ -526,6 +559,13 @@ class Engine:
                 solved=current.solved,
                 failed=current.failed,
             )
+        )
+        self._history.round_ended(
+            rounds=number,
+            joined=current.joined,
+            solved=current.solved,
+            failed=current.failed,
+            price_per_1k=self._price_per_1k,
         )
 
     # --- the snapshot ------------------------------------------------------
@@ -547,9 +587,24 @@ class Engine:
             _log.info(event("shown", message=shown.name if shown is not None else ""))
 
     def _show_credit(self, balance: dict[str, Any]) -> None:
+        """Put the credit figures in the snapshot, and keep the price for the row.
+
+        The price is on no screen (spec 7). The row keeps it so the money a run
+        spent is worked out from the rate the user was watching, rather than
+        from whatever the price is on the day it is read back.
+
+        The last price **read**, not the last payload's: a payload that carries
+        no price leaves the figure standing. Kept here rather than left to
+        `history`, because the row is only written at a round's end, and the
+        credit poll runs six times a round — a price read at the top of a round
+        would be gone by the time anything asked for it.
+        """
+        read = credit.price(balance)
+        if read is not None:
+            self._price_per_1k = read
         self._set(credit_left=credit.money(balance), estimated_solves=credit.solves(balance))
 
-    def _finish(self, terminal: AppError | None) -> None:
+    def _finish(self, terminal: AppError | None, waited_on: AppError | None = None) -> None:
         """Back to Idle, keeping the totals so Home can show the last-run summary.
 
         The stop flag is set on the way out, so a worker that outlives the round
@@ -558,7 +613,12 @@ class Engine:
         A run that ended on a fault leaves its raw text in `detail`. That is what
         the screen puts behind the small **Details** link of spec 5.6 — the
         headline stays plain words, and the raw text is one click away.
+
+        `waited_on` is the fault a stopped run was sitting on. A run stopped by
+        hand after three hours of Waiting is `stopped` **and** `SERVICE_PAUSED`,
+        which must not read like three hours of work ended by hand (ADR 0009).
         """
+        in_force = terminal or waited_on
         _log.info(
             event(
                 "run",
@@ -568,12 +628,43 @@ class Engine:
             )
         )
         self._stopping.set()
-        self._set(
-            state=RunState.IDLE,
-            headline=_end_headline(terminal),
-            detail=terminal.detail if terminal else "",
-            seconds_left=None,
-        )
+
+        try:
+            # Before the screen is told, so that a run reading Idle is a run
+            # whose record is finished: a row with no end on it reads as
+            # `interrupted`, and the last-run block would say the app had been
+            # closed on a run that had just stopped cleanly (ADR 0008).
+            self._history.end(
+                ended_at=time.time(),
+                ending=self._how_it_ended(terminal),
+                fault=in_force.code if in_force is not None else None,
+                price_per_1k=self._price_per_1k,
+            )
+        finally:
+            # Not a catch, and nothing is reported: a write that will not go
+            # through is `history`'s to swallow. This holds if that is ever
+            # untrue, because a run stuck on the screen is worse than a row
+            # with no ending on it.
+            self._set(
+                state=RunState.IDLE,
+                headline=_end_headline(terminal),
+                detail=terminal.detail if terminal else "",
+                seconds_left=None,
+            )
+
+    def _how_it_ended(self, terminal: AppError | None) -> history.Ending:
+        """Which of ADR 0009's three words this run's row carries.
+
+        Named here, where the run ends, and never worked out again from the code
+        downstream. The code is no answer on its own: a client that names
+        `UNKNOWN` as terminal is a fault the run hit, and an exception nobody
+        expected is a bug in this file, and the two carry the same code.
+        """
+        if terminal is None:
+            return history.Ending.STOPPED
+        if any(terminal is bug for bug in self._bugs):
+            return history.Ending.CRASHED
+        return history.Ending.FAULTED
 
 
 def _end_headline(terminal: AppError | None) -> Headline | ErrorCode:

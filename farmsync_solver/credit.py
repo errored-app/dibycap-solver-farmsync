@@ -5,8 +5,9 @@ control and the run all read the same payload the same way.
 
 Four fields are read: `estimated_solves`, `price_per_1k`, `balance` and
 `max_concurrent`. `active` and `type` are ignored on purpose (spec 7),
-`price_per_1k` is never shown — it only turns solves into money — and
-`max_concurrent` is never shown either: it only turns Speed into a thread count.
+`price_per_1k` is never shown — it turns solves into money, and a run keeps
+the last one it read in its history row (spec 10.2) — and `max_concurrent` is
+never shown either: it only turns Speed into a thread count.
 """
 from __future__ import annotations
 
@@ -22,6 +23,16 @@ def solves(balance: dict[str, Any]) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
+def price(balance: dict[str, Any]) -> float | None:
+    """What a thousand solves cost, or None when the payload carries no price.
+
+    None rather than zero, because a payload that names no price and one that
+    names a price of nothing are different facts, and a caller keeping the last
+    price a run read has to tell them apart (spec 10.2).
+    """
+    return _number(balance.get("price_per_1k"))
+
+
 def money(balance: dict[str, Any]) -> float:
     """The money left, derived from the price of a thousand solves.
 
@@ -29,9 +40,9 @@ def money(balance: dict[str, Any]) -> float:
     while the figure beside the solves count must be the money those solves are
     worth. The two agree on every payload measured so far.
     """
-    price = _number(balance.get("price_per_1k"))
-    if price is not None:
-        return solves(balance) * price / SOLVES_PER_PRICE_UNIT
+    per_1k = price(balance)
+    if per_1k is not None:
+        return solves(balance) * per_1k / SOLVES_PER_PRICE_UNIT
     return _number(balance.get("balance")) or 0.0
 
 

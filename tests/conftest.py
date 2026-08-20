@@ -4,11 +4,12 @@ from __future__ import annotations
 import importlib
 import time
 from collections.abc import Callable, Iterator
+from pathlib import Path
 from types import ModuleType
 
 import pytest
 
-from farmsync_solver import logging_setup
+from farmsync_solver import logging_setup, paths
 from farmsync_solver.engine import Engine
 from farmsync_solver.engine.snapshot import RunState
 
@@ -17,6 +18,19 @@ from farmsync_solver.engine.snapshot import RunState
 def clean_logging() -> Iterator[None]:
     yield
     logging_setup.reset()
+
+
+@pytest.fixture(autouse=True)
+def app_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    r"""`%APPDATA%` in a temporary folder, for every test in the suite.
+
+    Autouse, because a run writes its history row the moment it starts (ADR
+    0008): any test that drives a real `Engine` would otherwise put rows in the
+    spending history of whoever is running the suite. A test that wants a
+    different folder sets `APPDATA` again in its own body.
+    """
+    monkeypatch.setenv("APPDATA", str(tmp_path / "AppData" / "Roaming"))
+    return paths.app_data_dir()
 
 
 @pytest.fixture(autouse=True)
