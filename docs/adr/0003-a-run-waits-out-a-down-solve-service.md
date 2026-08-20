@@ -1,5 +1,9 @@
 # A run waits out a down solve service
 
+> **Reverses:** spec §5.1, §5.4, §5.5 and §9.7, which describe a paused service as
+> terminal and refuse to start a run while `/balance` is unreachable. Raised as
+> [#56](https://github.com/errored-app/dibycap-solver-farmsync/issues/56).
+
 A dibycap that is paused or unreachable ended the run
 ([ADR 0002](0002-a-paused-solve-service-gets-its-own-code.md) made
 `SERVICE_PAUSED` terminal). It no longer does. A fault that is dibycap's own —

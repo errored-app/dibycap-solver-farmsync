@@ -1,5 +1,9 @@
 # One screen, five themes
 
+> **Reverses:** spec §4.3, which lists no theme picker, and §10.1, which says
+> `config.json` holds exactly four fields. It holds five. Raised as
+> [#57](https://github.com/errored-app/dibycap-solver-farmsync/issues/57).
+
 The app now ships five **themes** — Modern, Handheld, Handheld Color, Console and
 Adventure — and the user picks one in Settings. A theme is **paint only**: it
 changes colour, corner, shadow and font family, and it changes nothing else. No
