@@ -249,21 +249,6 @@ def test_no_row_ever_names_a_device() -> None:
     }
 
 
-# --- closing the window (spec 5.3) ------------------------------------------
-
-
-def test_an_idle_app_closes_without_a_question() -> None:
-    assert home.should_confirm_close(RunState.IDLE) is False
-
-
-@pytest.mark.parametrize(
-    "state",
-    [RunState.DISCOVERING, RunState.SOLVING, RunState.RESTING, RunState.STOPPING],
-)
-def test_a_run_in_progress_is_asked_about_first(state: RunState) -> None:
-    assert home.should_confirm_close(state) is True
-
-
 # --- the seam itself --------------------------------------------------------
 
 

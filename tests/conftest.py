@@ -19,6 +19,19 @@ def clean_logging() -> Iterator[None]:
     logging_setup.reset()
 
 
+@pytest.fixture(autouse=True)
+def one_close_question() -> Iterator[None]:
+    """The close question lives for the life of the process, so it must not leak.
+
+    Imported here rather than at the top: NiceGUI's user fixture drops the ui
+    modules from `sys.modules`, and a reference taken at collection time would
+    reset a copy nothing else is holding.
+    """
+    importlib.import_module("farmsync_solver.ui.closing").forget()
+    yield
+    importlib.import_module("farmsync_solver.ui.closing").forget()
+
+
 @pytest.fixture
 def ui_app() -> ModuleType:
     """The live `farmsync_solver.ui.app`.

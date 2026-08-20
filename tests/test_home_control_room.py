@@ -24,7 +24,7 @@ from farmsync_solver.engine.snapshot import (
     RunSnapshot,
     RunState,
 )
-from farmsync_solver.ui import home, messages
+from farmsync_solver.ui import closing, home, messages
 
 pytest_plugins = ["nicegui.testing.user_plugin"]
 
@@ -239,7 +239,7 @@ async def test_stop_and_close_stops_the_run_before_the_window_goes(
     user: User, saved_keys: None, run_engine: FakeEngine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     closed: list[bool] = []
-    monkeypatch.setattr(home.native_app, "shutdown", lambda: closed.append(True))
+    monkeypatch.setattr(closing.native_app, "shutdown", lambda: closed.append(True))
     await _open_home(user)
     user.find(marker="run-button").click()
     await asyncio.sleep(SETTLE_SECONDS)
@@ -258,7 +258,7 @@ async def test_keep_running_leaves_the_run_alone(
     user: User, saved_keys: None, run_engine: FakeEngine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     closed: list[bool] = []
-    monkeypatch.setattr(home.native_app, "shutdown", lambda: closed.append(True))
+    monkeypatch.setattr(closing.native_app, "shutdown", lambda: closed.append(True))
     await _open_home(user)
     user.find(marker="run-button").click()
     await asyncio.sleep(SETTLE_SECONDS)
@@ -285,7 +285,7 @@ async def test_the_x_raises_the_question_while_a_run_is_going(
     user.find(marker="run-button").click()
     await asyncio.sleep(SETTLE_SECONDS)
 
-    assert home.close_or_ask() is False  # the window stays
+    assert closing.current().close_or_ask() is False  # the window stays
 
     await user.should_see(messages.CLOSE_QUESTION)
 
@@ -296,7 +296,7 @@ async def test_the_x_closes_an_idle_app_with_no_question(
 ) -> None:
     await _open_home(user)
 
-    assert home.close_or_ask() is True
+    assert closing.current().close_or_ask() is True
 
     assert _element(user, "closing-dialog").value is False
 
@@ -306,7 +306,7 @@ async def test_stop_and_close_is_not_asked_about_a_second_time(
     user: User, saved_keys: None, run_engine: FakeEngine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Closing the window fires `closing` again. The answer already given holds."""
-    monkeypatch.setattr(home.native_app, "shutdown", lambda: None)
+    monkeypatch.setattr(closing.native_app, "shutdown", lambda: None)
     await _open_home(user)
     user.find(marker="run-button").click()
     await asyncio.sleep(SETTLE_SECONDS)
@@ -316,14 +316,7 @@ async def test_stop_and_close_is_not_asked_about_a_second_time(
     await asyncio.sleep(SETTLE_SECONDS)
 
     assert run_engine.snapshot().state is RunState.STOPPING  # still not Idle
-    assert home.close_or_ask() is True
-
-
-def test_no_screen_yet_means_nothing_to_ask(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Setup is on screen, or the window is still opening. The X just closes."""
-    monkeypatch.setattr(home, "_showing", None)
-
-    assert home.close_or_ask() is True
+    assert closing.current().close_or_ask() is True
 
 
 @pytest.mark.nicegui_main_file("tests/nicegui_main.py")
@@ -338,7 +331,7 @@ async def test_the_x_never_traps_the_window_behind_settings(
     user.find(marker="settings-gear").click()
     await user.should_see(marker="speed-toggle")
 
-    assert home.close_or_ask() is True
+    assert closing.current().close_or_ask() is True
 
 
 # --- no devices, no auto-start (spec 4.2) -----------------------------------

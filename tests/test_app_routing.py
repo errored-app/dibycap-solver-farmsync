@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from farmsync_solver import config
-from farmsync_solver.ui import app, close_guard
+from farmsync_solver.ui import app, closing
 
 
 def test_no_keys_means_setup() -> None:
@@ -64,32 +64,11 @@ def test_a_key_from_another_windows_login_sends_the_app_back_to_setup(
 # --- the door the window's X knocks on (spec 5.3) ---------------------------
 
 
-async def test_the_close_question_is_answered_by_the_screen(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(app.home, "close_or_ask", lambda: False)
-
-    assert await app.answer_close_request() == {"close": False}
-
-
-async def test_an_app_with_nothing_to_ask_says_close(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(app.home, "close_or_ask", lambda: True)
-
-    assert await app.answer_close_request() == {"close": True}
-
-
-def test_the_route_is_mounted_where_the_window_knocks() -> None:
+def test_registering_the_page_mounts_the_close_route() -> None:
+    """What the app owes the close question. The rest is `ui.closing`."""
     from nicegui import app as ui_app
 
     app.register_pages()
 
     routes = {getattr(route, "path", "") for route in ui_app.routes}
-    assert close_guard.CLOSE_ROUTE in routes
-
-
-def test_the_window_is_armed_before_it_opens(monkeypatch: pytest.MonkeyPatch) -> None:
-    """NiceGUI hands `start_args` to `webview.start`, which calls `func` (spec 5.3)."""
-    from nicegui import app as ui_app
-
-    monkeypatch.setattr(ui_app.native, "start_args", {})
-    app.arm_close_question()
-
-    assert ui_app.native.start_args["func"] is close_guard.bind
+    assert closing.CLOSE_ROUTE in routes

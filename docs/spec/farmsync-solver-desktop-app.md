@@ -456,7 +456,7 @@ farmsync_solver/
     eligibility.py             <- is_eligible(account, device) -> bool
   ui/
     app.py  setup.py  home.py  settings.py
-    close_guard.py             <- runs in the window process: the X asks before it closes
+    closing.py                 <- the close question: the window's X, Ctrl+W, the dialog
     messages.py                <- the one error-code -> friendly-sentence table
 ```
 

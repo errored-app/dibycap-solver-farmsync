@@ -30,15 +30,13 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from nicegui import app as native_app
 from nicegui import run, ui
-from nicegui.events import KeyEventArguments
 
 from .. import credit, engine, keys
 from ..engine.snapshot import AccountRow, Result, RunSnapshot, RunState
 from ..errors import AppError, ErrorCode
 from ..keys import KeyCheck
-from . import messages, update_offer
+from . import closing, messages, update_offer
 
 # Roles, not colours: `ui.theme` decides what each one looks like in the theme
 # the user picked, so a low balance stays a warning on all five.
@@ -234,33 +232,6 @@ def table_rows(
     ]
 
 
-def should_confirm_close(state: RunState) -> bool:
-    """Spec 5.3: a run in progress is asked about before the window closes."""
-    return state is not RunState.IDLE
-
-
-# The Home screen this window is showing, or None while another screen is up.
-# The close question arrives over HTTP, outside any screen, and this is how it
-# finds the one dialog it must open.
-_showing: "_Screen | None" = None
-
-
-def close_or_ask() -> bool:
-    """Spec 5.3: close the window, or put the close question on screen.
-
-    True closes. False means the question is up instead, and the X must be
-    refused. With Home off the page there is no question and no dialog to put
-    it in, so the window goes.
-    """
-    return True if _showing is None else _showing.close_or_ask()
-
-
-def forget_screen() -> None:
-    """Home has left the page. Called before another screen is drawn over it."""
-    global _showing
-    _showing = None
-
-
 def build(
     api_key: str,
     farm_token: str,
@@ -274,11 +245,9 @@ def build(
     Takes plain values, not the config: `Engine.start` takes the same three for
     the same reason (spec 9.2), and the screen reads nothing else from the file.
     """
-    global _showing
     worker = run_engine if run_engine is not None else engine.current()
     offer = offer if offer is not None else update_offer.current()
     state = _Screen(worker, api_key, farm_token, speed_percent, offer)
-    _showing = state
 
     _update_strip(state)
 
@@ -294,8 +263,8 @@ def build(
         _left_panel(state)
         _live_table(state)
 
-    state.closing = _close_dialog(state)
-    ui.keyboard(on_key=state.on_key)
+    _close_dialog()
+    ui.keyboard(on_key=closing.current().on_key)
 
     # once=True: one call on open, not a poll. The live credit figure during a run
     # comes from the snapshot instead (spec 7).
@@ -354,8 +323,6 @@ class _Screen:
         self._can_start = False
         self._rows: list[AccountRow] = []
         self._round_shown = 0
-        self.closing: ui.dialog | None = None
-        self._close_answered = False
 
     # --- the open-time re-check -------------------------------------------
 
@@ -408,38 +375,6 @@ class _Screen:
             self._worker.start(self._api_key, self._farm_token, self._speed_percent)
             return
         self._worker.stop()
-
-    def on_key(self, event: KeyEventArguments) -> None:
-        """Ctrl+W is the close gesture the window itself does not handle."""
-        if event.action.keydown and event.modifiers.ctrl and event.key.name == "w":
-            self.request_close()
-
-    def request_close(self) -> None:
-        """Spec 5.3: a run is asked about; an idle app just closes."""
-        if self.close_or_ask():
-            native_app.shutdown()
-
-    def close_or_ask(self) -> bool:
-        """Spec 5.3: True closes, False puts the close question on screen instead.
-
-        An answer already given holds. Closing the window raises the question a
-        second time, and by then the polite stop has left the run Stopping, not
-        Idle — asking again would trap the window inside its own dialog. A
-        dialog that is no longer on the page cannot ask anything either, and a
-        window nobody can close is the worse of the two failures.
-        """
-        if self._close_answered or self.closing is None or self.closing.is_deleted:
-            return True
-        if not should_confirm_close(self._worker.snapshot().state):
-            return True
-        self.closing.open()
-        return False
-
-    def stop_and_close(self) -> None:
-        """The polite stop of spec 5.2, then the window goes."""
-        self._close_answered = True
-        self._worker.stop()
-        native_app.shutdown()
 
     # --- the refresh -------------------------------------------------------
 
@@ -571,14 +506,22 @@ def _live_table(state: _Screen) -> None:
         state.table.add_slot("body-cell-status", STATUS_BADGE)
 
 
-def _close_dialog(state: _Screen) -> ui.dialog:
-    """Spec 5.3's question, built once beside the screen it belongs to."""
+def _close_dialog() -> None:
+    """Spec 5.3's question, built beside the screen and handed to `ui.closing`.
+
+    Where the question is drawn is the whole of what Home knows about closing.
+    What it is asked about, who raises it and what Stop and close does are all
+    `ui.closing`.
+    """
+    question = closing.current()
     with ui.dialog().mark("closing-dialog") as dialog, ui.card().classes("items-stretch gap-3"):
         ui.label(messages.CLOSE_QUESTION).classes("text-lg font-semibold")
         with ui.row().classes("justify-end gap-2"):
             ui.button(messages.CLOSE_NO).props("flat").on("click", dialog.close)
-            ui.button(messages.CLOSE_YES).props("color=negative").on("click", state.stop_and_close)
-    return dialog
+            ui.button(messages.CLOSE_YES).props("color=negative").on(
+                "click", question.stop_and_close
+            )
+    question.register(dialog)
 
 
 def _number_row(label: str, marker: str, colour: str = NORMAL_COLOUR) -> ui.label:
