@@ -1,0 +1,41 @@
+# Every push and every pull request (spec 11.1's release is the other workflow).
+# A tag is the only thing that builds; this is the only thing that runs first.
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+# A second push to the same branch makes the first run pointless, and a windows
+# runner is the slowest one there is.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # windows-latest, not ubuntu: the config is sealed with DPAPI and the single
+    # instance is a named mutex, so half the suite is testing Windows itself.
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out the commit
+        uses: actions/checkout@v7
+
+      # An exact version, not a floating major: setup-uv stopped publishing
+      # `@v8` and up after the tj-actions attack, so there is no tag to follow.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+
+      - name: Install the locked dependencies
+        run: uv sync --frozen
+
+      # Before the tests, because it is the faster of the two and a name that
+      # does not exist fails every test that touches it for no clear reason.
+      - name: Check the types
+        run: uv run pyright
+
+      - name: Run the tests
+        run: uv run pytest

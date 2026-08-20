@@ -28,6 +28,15 @@ jobs:
       - name: Install the locked dependencies
         run: uv sync --frozen --group build
 
+      # The same two checks the Checks workflow runs on every push, repeated
+      # here because a tag may point at a commit that never had them run, and a
+      # release is the one build a user ends up installing.
+      - name: Check the types
+        run: uv run pyright
+
+      - name: Run the tests
+        run: uv run pytest
+
       - name: Stamp the version from the tag
         id: version
         run: |

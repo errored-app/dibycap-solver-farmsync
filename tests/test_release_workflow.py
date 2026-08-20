@@ -34,6 +34,17 @@ def test_only_a_version_tag_starts_a_release(workflow: dict[Any, Any]) -> None:
     assert triggers["push"]["tags"] == ["v*"]
 
 
+def test_a_tag_checks_and_tests_before_it_packs(steps: list[dict[str, Any]]) -> None:
+    """A tag may point at a commit the Checks workflow never saw."""
+    runs = [step.get("run", "") for step in steps]
+    types = next(i for i, run in enumerate(runs) if "pyright" in run)
+    tests = next(i for i, run in enumerate(runs) if "pytest" in run)
+    pack = next(i for i, run in enumerate(runs) if "nicegui-pack" in run)
+
+    assert types < pack
+    assert tests < pack
+
+
 def test_it_builds_on_windows(workflow: dict[str, Any]) -> None:
     (job,) = workflow["jobs"].values()
 
