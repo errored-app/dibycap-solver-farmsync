@@ -15,6 +15,7 @@ REQUIRED_FILES = [
     "_version.py",
     "config.py",
     "errors.py",
+    "history.py",
     "keys.py",
     "logging_setup.py",
     "looks.py",
