@@ -94,6 +94,16 @@ result is one of three — **joined** (got in, no captcha), **solved** (a captch
 was cracked), **failed** (could not be checked). A failed result carries the raw
 dibycap code as its detail. Failures are routine, not an alarm.
 
+## Blurred names
+
+The state the live table is in while the **blur switch** beside *Show only the
+ones that failed* is on: every cell of the Account column is blurred past
+reading. It is for a screenshot going into a chat, and it is not redaction — the
+username is still in the page, and blurred text in a known font is recoverable by
+anyone who wants it. The switch is off at every launch and is never saved, and it
+hides names only: the credit header and the spend both stay as they are, because
+money says nothing about who you are.
+
 ## Headline
 
 The named line at the top of the left panel: which of a run's moments the user is
@@ -133,6 +143,47 @@ Credit under a fixed threshold. It is a warning only — it never blocks a run.
 ## Out of credit
 
 Credit at zero. A run will not start, and a running run stops.
+
+## Spend
+
+What a run has cost, in money: solves x the key's `price_per_1k`, counted from
+the app's own counter and never measured from the drop in **credit**
+([ADR 0007](docs/adr/0007-spend-is-counted-from-solves.md)). Attempts are free,
+so only a **solve** moves it. A run that has never read a price has no spend at
+all, which is not the same as a spend of nothing.
+
+## History
+
+The record of every run this app has made, one row per run, kept in a file of its
+own beside the config. It holds no usernames, so it is safe to open in front of
+anyone. It is reached from Home as its own screen, and the newest row of it is
+what Home's **last-run line** compresses.
+
+## History record
+
+One run's row in the **history**: when it started and ended, how many rounds, the
+joined / solved / failed counts, the Speed it ran at, the price it was billed at,
+and its **ending**. The money is not stored — it is worked out from the price and
+the count whenever the row is read.
+
+## Ending
+
+How a run finished, as one of four words. Three are written by the app as the run
+ends: **stopped** (the user pressed Stop), **faulted** (a **terminal error** ended
+it) and **crashed** (an engine bug). The fourth, **interrupted**, cannot be
+written and is read from a row with no end time: the app was closed or killed
+while the run was still going. Beside the ending sits the **fault**, the error
+code in force when the run ended, which is what separates three hours of waiting
+that a user gave up on from three hours of work
+([ADR 0009](docs/adr/0009-the-history-names-its-own-ending.md)).
+
+## Last-run line
+
+The block on the idle left panel naming the newest **history record**: when the
+run started, how long it lasted, what it solved, what it **spent**, and its
+**ending**. It stands in place of the live counters while no run is on, and it is
+a compression of a history row, never a second account of one — it drops any fact
+it cannot state rather than showing a dash.
 
 ## Run log
 
