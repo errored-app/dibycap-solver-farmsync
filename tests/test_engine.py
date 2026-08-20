@@ -745,14 +745,23 @@ def test_the_waiting_line_moves_between_knocks(
     monkeypatch.setattr(run, "WAIT_SECONDS", 3.0)
     monkeypatch.setattr(run, "TICK_SECONDS", 0.02)
 
-    seen: set[int | None] = set()
+    seen: set[int] = set()
+    climbed = False
 
+    # One snapshot per poll, and the elapsed clock is part of what is waited for.
+    # Reading it again afterwards raced Windows' ~15 ms monotonic granularity: the
+    # first tick of a fresh countdown is genuinely `seconds_waited == 0.0`, so a
+    # second read taken inside the same clock tick saw a zero that was about to
+    # move.
     def counted_down() -> bool:
-        seen.add(engine.snapshot().seconds_left)
-        return len([left for left in seen if left is not None]) >= 2
+        nonlocal climbed
+        shot = engine.snapshot()
+        if shot.seconds_left is not None:
+            seen.add(shot.seconds_left)
+        climbed = climbed or shot.seconds_waited > 0
+        return len(seen) >= 2 and climbed
 
-    assert wait_for(counted_down), seen
-    assert engine.snapshot().seconds_waited > 0
+    assert wait_for(counted_down), (seen, climbed)
 
 
 def test_the_waiting_line_says_the_knock_is_out_while_it_hangs(
