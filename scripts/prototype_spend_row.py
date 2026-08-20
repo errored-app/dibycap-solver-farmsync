@@ -304,9 +304,14 @@ class OwnBlock(SpendRow):
     Rounded to the cent and settled once a second, because a big figure flickering
     at 5 Hz is the thing that makes a panel feel unstable.
 
+    The line carries the price and not the solve count: the count is already three
+    rows above it, and repeating it at a slower beat was the one place on the
+    panel where two numbers disagreed.
+
     No price yet: the whole block stays off the screen. There is no half-answer
     worth a rule and a heading. Price change: the working line says so, which is
-    the only variant here that shows the seam.
+    the only variant here that shows the seam. No single price would multiply out
+    to the figure above once two of them have been billed.
     """
 
     def build(self, state: home._Screen, column: ui.column, after: int) -> None:
@@ -332,11 +337,10 @@ class OwnBlock(SpendRow):
         self._shown_at = now
 
         self.figure.set_text(f"${spend.dollars:,.2f}")
-        solves = f"{snapshot.solved:,} solves"
         self.working.set_text(
-            f"{solves} · the price changed mid-run"
+            "the price changed mid-run"
             if spend.prices_used > 1
-            else f"{solves} at ${spend.price:.2f} per 1,000"
+            else f"at ${spend.price:.2f} per 1,000"
         )
 
 
