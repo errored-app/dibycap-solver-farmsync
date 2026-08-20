@@ -33,3 +33,6 @@ installer/MicrosoftEdgeWebview2Setup.exe
 # The seeded design canvas: ~2 MB of editor code, rebuilt from the .dc.html sources.
 design/**/*.html
 !design/**/*.dc.html
+
+# Playwright MCP scratch: page snapshots taken while looking at a prototype.
+.playwright-mcp/
