@@ -117,6 +117,10 @@ hides or renames a control, so every screen is built once and painted five ways
 ([ADR 0004](docs/adr/0004-one-screen-five-themes.md)). Unlike the keys and Speed,
 a theme can be changed while a run is going.
 
+In code a theme is a **Look**: one block holding that theme's name and every
+value it paints with. `looks.LOOKS` is the five the app ships, in the order
+Settings offers them, and it is the only list of them there is.
+
 ## Credit
 
 The work left in the dibycap key, counted in **solves**. Money is the secondary

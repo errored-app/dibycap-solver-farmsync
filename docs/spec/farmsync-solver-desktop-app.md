@@ -446,6 +446,7 @@ farmsync_solver/
   errors.py                    <- error types with stable codes; shared by engine, keys, updater
   keys.py                      <- check_api_key(key), check_farm_token(token)
   logging_setup.py             <- configures stdlib logging once, at process start
+  looks.py                     <- the five themes: one block of values per theme, name included
   updater.py                   <- GitHub Releases check, download, checksum, run Setup.exe
   engine/
     __init__.py                <- re-exports Engine and the snapshot types
@@ -458,6 +459,7 @@ farmsync_solver/
     app.py  setup.py  home.py  settings.py
     closing.py                 <- the close question: the window's X, Ctrl+W, the dialog
     messages.py                <- the one error-code -> friendly-sentence table
+    theme.py                   <- the CSS rules that wear a look, and the two calls that apply it
 ```
 
 ### 9.2 The engine/UI seam
@@ -591,7 +593,10 @@ The terminal-error list in `src/roblox.py` becomes **codes, not substring matchi
 on `str(e)`**.
 
 **All user-facing wording lives in one table in `ui/messages.py`.** The engine
-holds no user copy.
+holds no user copy. One exception, and only one: a theme's name sits on its
+`Look` in `looks.py`, because a theme is one block and a name that can go missing
+while the paint ships is a tile with a blank line under it
+([ADR 0004](../adr/0004-one-screen-five-themes.md)).
 
 ### 9.8 What dies
 

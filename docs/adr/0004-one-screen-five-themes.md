@@ -7,16 +7,21 @@ theme adds a control, moves one, hides one, or renames one. Home, Settings and
 Setup are built once and painted five ways.
 
 That rule is the whole decision. It is what keeps the set cheap: a sixth theme is
-a block of values in `ui/theme.py` and a name in `ui/messages.py`, and it costs
-nothing on any screen that already exists or on any screen written later.
+one entry in `looks.LOOKS` and nothing anywhere else, and it costs nothing on any
+screen that already exists or on any screen written later.
 
-The mechanism follows from the rule. `ui/theme.py` holds two halves that never
-mix: `RULES`, written once, says which part of the app takes which value and
-names no colour of its own; a `Look` is a bag of values. Picking a theme replaces
-the CSS variables on `<body>` and touches nothing else, so a change is one
-attribute write with no rebuild — spec 4.4's build-once rule, kept. Quasar's own
-brand variables (`--q-primary` and friends) are set from the same bag, so
-buttons, spinners, bars and switches are themed without a single override.
+The mechanism follows from the rule, in two halves that never mix. `RULES`, in
+`ui/theme.py`, is written once: it says which part of the app takes which value
+and names no colour of its own. A `Look`, in `looks.py`, is a bag of values with
+the theme's display name on it, and `LOOKS` is the list of the ones that ship —
+what Settings offers, what the tile is labelled and painted with, and what
+`config` refuses a saved value against. It sits beside `config.py` rather than
+under `ui/` because `config` has to know which themes ship and must not import a
+window to find out. Picking a theme replaces the CSS variables on `<body>` and
+touches nothing else, so a change is one attribute write with no rebuild — spec
+4.4's build-once rule, kept. Quasar's own brand variables (`--q-primary` and
+friends) are set from the same bag, so buttons, spinners, bars and switches are
+themed without a single override.
 
 **A theme is not locked during a run.** Spec 5.7 locks the keys and Speed because
 changing either mid-run would change what the run is doing. A theme changes
@@ -66,3 +71,7 @@ one theme module is for.
   too.
 - `settings.build` takes the theme beside the speed. Both are one stored value,
   read on the way in and written straight back to the file on a pick.
+- The name is a field on `Look`, not a row in `ui/messages.py`. Every other
+  sentence the user reads still comes from `messages`; a theme's name is the one
+  exception, because a name that can go missing while the paint ships is a tile
+  with a blank line under it.

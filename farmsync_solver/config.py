@@ -20,17 +20,12 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from . import looks
 from ._version import APP_NAME
 
 CONFIG_VERSION = 1
 DEFAULT_SPEED_PERCENT = 100
 SPEED_CHOICES = (25, 50, 75, 100)
-
-# The look the user picked. The keys live here rather than in the UI so this
-# module can read the file without importing a screen; what each one looks like
-# is `ui.theme`'s business, and what each one is called is `ui.messages`'.
-DEFAULT_THEME = "modern"
-THEME_CHOICES = ("modern", "handheld", "handheld-color", "console", "adventure")
 
 _log = logging.getLogger(__name__)
 
@@ -42,7 +37,7 @@ class Config:
     api_key: str = ""
     farm_token: str = ""
     speed_percent: int = DEFAULT_SPEED_PERCENT
-    theme: str = DEFAULT_THEME
+    theme: str = looks.DEFAULT
 
     @property
     def is_ready(self) -> bool:
@@ -124,8 +119,8 @@ def save_theme(theme: str, path: Path | None = None) -> Config:
     Unlike the keys and Speed this one is allowed to change mid-run (ADR 0004):
     a theme touches nothing the engine is doing.
     """
-    if theme not in THEME_CHOICES:
-        raise ValueError(f"theme={theme!r} is not one of {THEME_CHOICES}")
+    if theme not in looks.LOOKS:
+        raise ValueError(f"theme={theme!r} is not one of {tuple(looks.LOOKS)}")
 
     saved = replace(load(path), theme=theme)
     save(saved, path)
@@ -172,9 +167,9 @@ def _read_theme(value: object) -> str:
     A file written by a newer version, or edited by hand, must not leave the app
     with no look at all: the worst it can do is put the user back on Modern.
     """
-    if isinstance(value, str) and value in THEME_CHOICES:
+    if isinstance(value, str) and value in looks.LOOKS:
         return value
-    return DEFAULT_THEME
+    return looks.DEFAULT
 
 
 # --- Windows DPAPI, current-user scope, value level -------------------------

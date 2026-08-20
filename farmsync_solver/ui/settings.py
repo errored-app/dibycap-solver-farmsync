@@ -27,7 +27,7 @@ from typing import Callable
 
 from nicegui import ui
 
-from .. import config, diagnostics, engine, updater
+from .. import config, diagnostics, engine, looks, updater
 from .._version import APP_NAME, VERSION
 from ..errors import AppError
 from . import home, messages, setup, theme, update_offer
@@ -197,19 +197,22 @@ def _theme_section(theme_key: str) -> None:
         _say(note, messages.SETTINGS_SAVED, good=True)
 
     with ui.row().classes("items-stretch gap-3 flex-nowrap"):
-        for key in config.THEME_CHOICES:
-            tiles[key], dots[key] = _theme_tile(key, picked=key == theme_key, on_pick=pick)
+        for key, look in looks.LOOKS.items():
+            tiles[key], dots[key] = _theme_tile(
+                key, look, picked=key == theme_key, on_pick=pick
+            )
 
 
 def _theme_tile(
-    key: str, picked: bool, on_pick: Callable[[str], None]
+    key: str, look: looks.Look, picked: bool, on_pick: Callable[[str], None]
 ) -> tuple[ui.element, ui.icon]:
     """One tile: a small picture of that theme, its name, and a dot.
 
-    Hands the dot back so the row can move the mark without being rebuilt: spec
-    4.4's build-once rule holds here as much as it does on Home.
+    Both the picture and the name come off the one `Look`, so a theme cannot
+    ship half-dressed. Hands the dot back so the row can move the mark without
+    being rebuilt: spec 4.4's build-once rule holds here as much as it does on
+    Home.
     """
-    look = theme.look(key)
     classes = "fs-tile p-2 flex flex-col gap-2 w-32"
     tile = ui.element("div").classes(f"{classes} fs-tile-picked" if picked else classes)
     tile.mark(f"theme-{key}")
@@ -241,7 +244,7 @@ def _theme_tile(
             dot = ui.icon(_DOT_ON if picked else _DOT_OFF).classes(
                 "text-base " + ("fs-ink" if picked else "fs-muted")
             )
-            ui.label(messages.theme_name(key)).classes("text-sm")
+            ui.label(look.name).classes("text-sm")
 
     return tile, dot
 

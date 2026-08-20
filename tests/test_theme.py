@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from farmsync_solver import config
-from farmsync_solver.ui import messages, theme
+from farmsync_solver import config, looks
+from farmsync_solver.ui import theme
 
 HEX = re.compile(r"#[0-9a-fA-F]{3,8}")
 
@@ -18,37 +18,28 @@ def config_file(tmp_path: Path) -> Path:
     return tmp_path / "config.json"
 
 
-@pytest.mark.parametrize("key", config.THEME_CHOICES)
-def test_every_shipped_theme_has_a_look(key: str) -> None:
-    assert key in theme.LOOKS
-
-
-@pytest.mark.parametrize("key", config.THEME_CHOICES)
+@pytest.mark.parametrize("key", looks.LOOKS)
 def test_every_shipped_theme_has_a_name(key: str) -> None:
-    name = messages.theme_name(key)
+    name = looks.LOOKS[key].name
 
     assert name and name != key
 
 
-def test_no_look_ships_that_the_app_does_not_offer() -> None:
-    """A look nobody can pick is dead paint, and it would never be seen again."""
-    assert set(theme.LOOKS) == set(config.THEME_CHOICES)
+def test_the_default_theme_is_one_of_the_looks() -> None:
+    assert looks.DEFAULT in looks.LOOKS
 
 
-def test_the_themes_are_offered_in_the_order_the_app_lists_them() -> None:
-    assert list(theme.looks()) == list(config.THEME_CHOICES)
-
-
-def test_the_default_theme_is_one_of_the_choices() -> None:
-    assert config.DEFAULT_THEME in config.THEME_CHOICES
-
-
-@pytest.mark.parametrize("key", config.THEME_CHOICES)
+@pytest.mark.parametrize("key", looks.LOOKS)
 def test_a_look_hands_quasar_the_accent(key: str) -> None:
     """Buttons, spinners and bars are Quasar's, and this is how they get painted."""
-    variables = theme.look(key).variables()
+    variables = looks.look(key).variables()
 
-    assert f"--q-primary: {theme.look(key).accent}" in variables
+    assert f"--q-primary: {looks.look(key).accent}" in variables
+
+
+def test_a_look_never_paints_its_own_name_onto_the_page() -> None:
+    """The name is a label, not a value. It must not reach the stylesheet."""
+    assert "Handheld Color" not in looks.look("handheld-color").variables()
 
 
 def test_the_rules_name_no_colour_of_their_own() -> None:
@@ -56,24 +47,24 @@ def test_the_rules_name_no_colour_of_their_own() -> None:
     assert not HEX.search(theme.RULES)
 
 
-@pytest.mark.parametrize("key", config.THEME_CHOICES)
+@pytest.mark.parametrize("key", looks.LOOKS)
 def test_every_variable_the_rules_ask_for_is_one_a_theme_sets(key: str) -> None:
     """A misspelt variable paints nothing and says nothing. This is the alarm."""
     asked = set(re.findall(r"var\((--fs-[a-z-]+)\)", theme.RULES))
-    given = {pair.split(":")[0].strip() for pair in theme.look(key).variables().split(";")}
+    given = {pair.split(":")[0].strip() for pair in looks.look(key).variables().split(";")}
 
     assert asked <= given
 
 
 def test_an_unknown_theme_still_paints_the_window() -> None:
-    assert theme.look("no-such-theme") is theme.LOOKS[config.DEFAULT_THEME]
+    assert looks.look("no-such-theme") is looks.LOOKS[looks.DEFAULT]
 
 
 # --- what the file does with it --------------------------------------------
 
 
 def test_a_fresh_file_reads_as_the_default_theme(config_file: Path) -> None:
-    assert config.load(config_file).theme == config.DEFAULT_THEME
+    assert config.load(config_file).theme == looks.DEFAULT
 
 
 def test_a_saved_theme_comes_back(config_file: Path) -> None:
@@ -105,7 +96,7 @@ def test_a_theme_nobody_ships_reads_as_the_default(config_file: Path) -> None:
     """A file from a newer version must not leave the window with no look."""
     config_file.write_text(json.dumps({"theme": "neon"}), encoding="utf-8")
 
-    assert config.load(config_file).theme == config.DEFAULT_THEME
+    assert config.load(config_file).theme == looks.DEFAULT
 
 
 def test_forget_my_keys_keeps_the_theme(config_file: Path) -> None:

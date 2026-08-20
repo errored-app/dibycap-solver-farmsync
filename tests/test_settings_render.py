@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from nicegui.testing import User
 
-from farmsync_solver import config, keys
+from farmsync_solver import config, keys, looks
 from farmsync_solver._version import VERSION
 from farmsync_solver.ui import messages, settings, theme
 
@@ -119,14 +119,14 @@ async def test_the_theme_picker_offers_every_shipped_theme(
     await _open_settings(user)
 
     await user.should_see(messages.SETTINGS_THEME_TITLE)
-    for key in config.THEME_CHOICES:
-        await user.should_see(messages.theme_name(key))
+    for look in looks.LOOKS.values():
+        await user.should_see(look.name)
 
 
 @pytest.mark.nicegui_main_file("tests/nicegui_main.py")
 async def test_picking_a_theme_saves_it(user: User, saved_keys: Path) -> None:
     await _open_settings(user)
-    assert config.load(saved_keys).theme == config.DEFAULT_THEME
+    assert config.load(saved_keys).theme == looks.DEFAULT
 
     user.find(marker="theme-console").click()
 

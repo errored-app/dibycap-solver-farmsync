@@ -151,26 +151,6 @@ def speed_choice(percent: int) -> str:
     return f"{percent}%"
 
 
-# What each theme is called on screen. The keys are `config.THEME_CHOICES`; the
-# looks themselves live in `ui.theme`, and neither module says the other's part.
-THEME_NAME = {
-    "modern": "Modern",
-    "handheld": "Handheld",
-    "handheld-color": "Handheld Color",
-    "console": "Console",
-    "adventure": "Adventure",
-}
-
-
-def theme_name(key: str) -> str:
-    """The name under one theme tile. An unknown key shows the key itself.
-
-    Nothing user-facing should ever be blank: a tile with no name under it reads
-    as a broken screen, where the raw key at least says which one it is.
-    """
-    return THEME_NAME.get(key, key)
-
-
 def outcome_word(result: Result) -> str:
     """The words on one row's status badge."""
     return OUTCOME_WORD.get(result, "")
