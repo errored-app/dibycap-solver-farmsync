@@ -14,6 +14,9 @@ Three rules shape the worker body at the bottom of the file:
 - A service fault is dibycap's, not the key's, so the round loop waits it out
   rather than ending the run (ADR 0003).
 - Nothing here prints. A windowed build has no console (spec 2).
+- Nothing here holds a sentence. The snapshot carries a `Headline` member and
+  the numbers a line counts; the words are `ui/messages.py`'s (ADR 0005), which
+  is why this file imports nothing out of `ui`.
 """
 from __future__ import annotations
 
@@ -28,13 +31,9 @@ from .. import credit
 from ..errors import AppError, ErrorCode, is_terminal, is_waitable
 from ..logging_setup import event
 
-# The engine holds no user copy of its own: every sentence a run puts on screen
-# comes from the one table of spec 9.7. `ui.messages` imports no NiceGUI, so a
-# headless run pays nothing for this (spec 9.2).
-from ..ui import messages
 from .dibycap import HOPELESS_CODES, Dibycap
 from .farmsync import Farmsync
-from .snapshot import IDLE, AccountRow, Result, RunSnapshot, RunState
+from .snapshot import IDLE, AccountRow, Headline, Result, RunSnapshot, RunState
 
 # The fixed rest between rounds (spec 5.1) and the live credit read (spec 7).
 # Module constants, not constructor arguments: spec 9.4 refuses a seam that only
@@ -131,7 +130,7 @@ class Engine:
         # Back to the empty snapshot first, then through `_set`, so the run's
         # first state change is logged like every later one (spec 8.1).
         self._snapshot = IDLE
-        self._set(state=RunState.DISCOVERING, headline=messages.RUN_STARTING)
+        self._set(state=RunState.DISCOVERING, headline=Headline.STARTING)
 
         self._loop = threading.Thread(
             target=self._run,
@@ -151,7 +150,7 @@ class Engine:
 
         _log.info(event("stop"))
         self._stopping.set()
-        self._set(state=RunState.STOPPING, headline=messages.RUN_STOPPING, message="")
+        self._set(state=RunState.STOPPING, headline=Headline.STOPPING)
 
     def snapshot(self) -> RunSnapshot:
         """The whole picture, now. Always answers, Idle included."""
@@ -279,10 +278,10 @@ class Engine:
         """
         self._set(
             state=RunState.DISCOVERING,
-            headline=messages.RUN_DISCOVERING,
-            message="",
+            headline=Headline.DISCOVERING,
             done=0,
             total=0,
+            seconds_left=None,
         )
 
         for _ in range(DISCOVERY_ATTEMPTS):
@@ -312,10 +311,10 @@ class Engine:
             self._accounts.put(account)
         self._set(
             state=RunState.SOLVING,
-            headline=messages.RUN_SOLVING,
-            message=messages.run_progress(0, len(accounts)),
+            headline=Headline.SOLVING,
             total=len(accounts),
             done=0,
+            seconds_left=None,
         )
 
         workers = [
@@ -385,11 +384,7 @@ class Engine:
         counter = COUNTER_OF[outcome.result]
         done = current.done + 1
 
-        self._set(
-            done=done,
-            message=messages.run_progress(done, current.total),
-            **{counter: getattr(current, counter) + 1},
-        )
+        self._set(done=done, **{counter: getattr(current, counter) + 1})
         self._rows.put(
             AccountRow(
                 username=username,
@@ -444,18 +439,23 @@ class Engine:
         the same call the round makes.
         """
         _log.info(event("wait", phase="start", code=fault.code.value, detail=fault.detail))
-        self._set(state=RunState.WAITING, headline=_waiting_headline(fault), message="")
+        self._set(
+            state=RunState.WAITING,
+            headline=_waiting_headline(fault),
+            seconds_waited=0.0,
+            seconds_left=int(WAIT_SECONDS),
+        )
 
         began = time.monotonic()
         said = 0.0
         while True:
-            # The message ticks every second, like the rest does. A wait that
+            # The line ticks every second, like the rest does. A wait that
             # only redrew once a knock would sit unchanged for a minute at a
             # time, which is a run and a hung window telling the same story.
             left = WAIT_SECONDS
             while left > 0:
                 waited = time.monotonic() - began
-                self._set(message=messages.run_waiting(waited, int(left)))
+                self._set(seconds_waited=waited, seconds_left=int(left))
                 if waited - said >= WAIT_LOG_SECONDS:
                     said = waited
                     _log.info(event("wait", phase="still", seconds=int(waited)))
@@ -468,7 +468,7 @@ class Engine:
             # The knock itself. A probe is a real solve, so against a sick
             # service it is the step most likely to take a while, and "in 0s"
             # held for ten seconds is the freeze again in miniature.
-            self._set(message=messages.run_waiting(time.monotonic() - began, None))
+            self._set(seconds_waited=time.monotonic() - began, seconds_left=None)
             if probe():
                 _log.info(event("wait", phase="end", seconds=int(time.monotonic() - began)))
                 return True
@@ -491,14 +491,14 @@ class Engine:
         _log.info(event("probe", result="up"))
         return True
 
-    def _rest(self, client: Dibycap, headline: str) -> None:
+    def _rest(self, client: Dibycap, headline: Headline) -> None:
         """The fixed pause between rounds. A stop cuts it short (spec 5.2)."""
-        self._set(state=RunState.RESTING, headline=headline)
+        self._set(state=RunState.RESTING, headline=headline, seconds_left=int(REST_SECONDS))
 
         left = REST_SECONDS
         while left > 0:
             self._refresh_credit(client)
-            self._set(message=messages.run_rest(int(left)))
+            self._set(seconds_left=int(left))
             step = min(TICK_SECONDS, left)
             if self._stopping.wait(step):
                 return
@@ -527,15 +527,16 @@ class Engine:
 
         Every state change is logged from here rather than from each caller, so
         spec 8.1's "every run-state change" cannot be missed by a new branch. The
-        headline goes with it, by its `messages.py` name: the file has to say
-        which sentence the user was reading, not read it back in friendly words.
+        headline goes with it, by name: the file has to say which line the user
+        was reading, and it says it in the engine's words, not the user's.
         """
         was = self._snapshot
         self._snapshot = replace(self._snapshot, **changes)
         if self._snapshot.state is not was.state:
             _log.info(event("state", state=self._snapshot.state.value))
-        if self._snapshot.headline != was.headline:
-            _log.info(event("shown", message=messages.name_of(self._snapshot.headline)))
+        if self._snapshot.headline is not was.headline:
+            shown = self._snapshot.headline
+            _log.info(event("shown", message=shown.name if shown is not None else ""))
 
     def _show_credit(self, balance: dict[str, Any]) -> None:
         self._set(credit_left=credit.money(balance), estimated_solves=credit.solves(balance))
@@ -546,7 +547,7 @@ class Engine:
         The stop flag is set on the way out, so a worker that outlives the round
         loop takes no further account.
 
-        A run that ended on a fault leaves its raw text in `message`. That is what
+        A run that ended on a fault leaves its raw text in `detail`. That is what
         the screen puts behind the small **Details** link of spec 5.6 — the
         headline stays plain words, and the raw text is one click away.
         """
@@ -562,44 +563,46 @@ class Engine:
         self._set(
             state=RunState.IDLE,
             headline=_end_headline(terminal),
-            message=terminal.detail if terminal else "",
+            detail=terminal.detail if terminal else "",
+            seconds_left=None,
         )
 
 
-def _end_headline(terminal: AppError | None) -> str:
+def _end_headline(terminal: AppError | None) -> Headline | ErrorCode:
     """The headline a finished run leaves behind.
 
-    An unnamed fault is an engine bug as far as the user is concerned, and spec
-    5.6 gives it its own sentence: the run stopped, which "try again in a moment"
-    does not say.
+    A named fault is its own headline: the code goes into the snapshot and the UI
+    reads the sentence for it off the error table. An unnamed one is an engine bug
+    as far as the user is concerned, and spec 5.6 gives it its own sentence: the
+    run stopped, which "try again in a moment" does not say.
     """
     if terminal is None:
-        return messages.RUN_STOPPED
+        return Headline.STOPPED
     if terminal.code is ErrorCode.UNKNOWN:
-        return messages.RUN_CRASHED
-    return messages.for_code(terminal.code)
+        return Headline.CRASHED
+    return terminal.code
 
 
-def _waiting_headline(fault: AppError) -> str:
+def _waiting_headline(fault: AppError) -> Headline:
     """What Waiting says, which is why we are waiting.
 
     Two sentences, not one: a paused service and a service that cannot be reached
     look the same to the engine and read nothing alike to the user.
     """
     if fault.code is ErrorCode.SERVICE_PAUSED:
-        return messages.RUN_WAITING_PAUSED
-    return messages.RUN_WAITING_UNREACHABLE
+        return Headline.WAITING_PAUSED
+    return Headline.WAITING_UNREACHABLE
 
 
-def _rest_headline(found: list[dict[str, Any]] | None) -> str:
+def _rest_headline(found: list[dict[str, Any]] | None) -> Headline:
     """What the rest says, which is how the round that just ended went.
 
     A farmsync that could not be reached, and a round with nothing to do, both
     say so through the whole rest rather than for the instant before it.
     """
     if found is None:
-        return messages.RUN_NO_FARMSYNC
-    return messages.RUN_RESTING if found else messages.RUN_NO_ACCOUNTS
+        return Headline.NO_FARMSYNC
+    return Headline.RESTING if found else Headline.NO_ACCOUNTS
 
 
 def _name_of(account: dict[str, Any]) -> str:

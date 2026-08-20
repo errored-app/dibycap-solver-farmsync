@@ -1,7 +1,9 @@
 """The one error-code -> friendly-sentence table.
 
 Spec 9.7: every word the user reads about a failure comes from here. The engine,
-the key checks and the updater hold stable codes only. Rules for the wording:
+the key checks and the updater hold stable codes and `Headline` members only, and
+this module is the one place either becomes English (ADR 0005). Rules for the
+wording:
 
 - plain words, no jargon, no error code, no key value;
 - say what to do next where there is something to do.
@@ -11,6 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 from .. import credit
+from ..engine.snapshot import Headline, Result
 from ..errors import ErrorCode
 
 FOR_CODE: dict[ErrorCode, str] = {
@@ -55,28 +58,33 @@ CLOSE_QUESTION = "A run is going. Stop it and close?"
 CLOSE_YES = "Stop and close"
 CLOSE_NO = "Keep running"
 
-RUN_STARTING = "Getting ready…"
-RUN_DISCOVERING = "Finding accounts…"
-RUN_SOLVING = "Checking accounts…"
-RUN_RESTING = "Waiting for the next round."
-RUN_STOPPING = "Stopping. Finishing the accounts already started…"
-RUN_STOPPED = "Stopped."
-RUN_NO_ACCOUNTS = "No accounts to check this round."
-# No "in a minute": the rest countdown right under this line already says when.
-RUN_NO_FARMSYNC = "Could not reach farmsync. Trying again."
-# The two sentences of the Waiting state (ADR 0003). Two, not one: someone whose
-# wifi is off must not read that the service is paused.
-RUN_WAITING_PAUSED = "The captcha service is paused. Waiting for it to come back…"
-RUN_WAITING_UNREACHABLE = "Could not reach the captcha service. Trying again every minute."
-RUN_CRASHED = "Something went wrong and the run stopped."
+# What each headline of a run reads as. The engine sets the member; the sentence
+# never leaves this module (ADR 0005).
+FOR_HEADLINE: dict[Headline, str] = {
+    Headline.STARTING: "Getting ready…",
+    Headline.DISCOVERING: "Finding accounts…",
+    Headline.SOLVING: "Checking accounts…",
+    Headline.RESTING: "Waiting for the next round.",
+    Headline.NO_ACCOUNTS: "No accounts to check this round.",
+    # No "in a minute": the rest countdown right under this line already says when.
+    Headline.NO_FARMSYNC: "Could not reach farmsync. Trying again.",
+    # The two sentences of the Waiting state (ADR 0003). Two, not one: someone
+    # whose wifi is off must not read that the service is paused.
+    Headline.WAITING_PAUSED: "The captcha service is paused. Waiting for it to come back…",
+    Headline.WAITING_UNREACHABLE: (
+        "Could not reach the captcha service. Trying again every minute."
+    ),
+    Headline.STOPPING: "Stopping. Finishing the accounts already started…",
+    Headline.STOPPED: "Stopped.",
+    Headline.CRASHED: "Something went wrong and the run stopped.",
+}
 
-# What one row's status badge reads (spec 4.2). Keyed by the *value* of
-# `engine.snapshot.Result`, not by the enum itself: `engine` imports this module,
-# so this module must not import `engine`.
-OUTCOME_WORD: dict[str, str] = {
-    "joined": "Joined",
-    "solved": "Captcha solved",
-    "failed": "Could not check",
+# What one row's status badge reads (spec 4.2), keyed by the outcome itself. The
+# seam runs one way, from here into the engine (ADR 0005), so the enum is in reach.
+OUTCOME_WORD: dict[Result, str] = {
+    Result.JOINED: "Joined",
+    Result.SOLVED: "Captcha solved",
+    Result.FAILED: "Could not check",
 }
 
 SETTINGS_TITLE = "Settings"
@@ -120,23 +128,22 @@ UPDATE_LOCKED = "Stop the run to update."
 DIAGNOSTICS_KEY_OK = "ok"
 DIAGNOSTICS_KEY_UNCHECKED = "not checked yet"
 
-# Sentence -> the constant that holds it. Later names win, which never happens:
-# no two constants here hold the same words.
-_NAME_OF: dict[str, str] = {
-    value: name
-    for name, value in list(globals().items())
-    if name.isupper() and isinstance(value, str)
-}
 
+def headline(shown: Headline | ErrorCode | None) -> str:
+    """The sentence for the line a snapshot is showing (spec 4.2).
 
-def name_of(sentence: str) -> str:
-    """The constant behind a sentence, for the log (spec 8.1, "Tone").
-
-    The file is technical, so it records `RUN_NO_FARMSYNC`, not the friendly
-    words. Built once from this module's own names, so a new sentence is
-    loggable the moment it is written down here.
+    A member reads out of the table above; a fault reads out of the error table,
+    because the headline a run ends on *is* what went wrong. The snapshot before
+    any run has neither, and Home puts its own "No runs yet." in the gap.
     """
-    return _NAME_OF.get(sentence, "")
+    if shown is None:
+        return ""
+    if isinstance(shown, ErrorCode):
+        return for_code(shown)
+    # No fallback, unlike the rest of this module: a member with no sentence is a
+    # missing table row, and the panel would put "No runs yet." on a live run to
+    # cover for it. `test_every_headline_has_a_sentence` is what keeps it full.
+    return FOR_HEADLINE[shown]
 
 
 def speed_choice(percent: int) -> str:
@@ -164,8 +171,8 @@ def theme_name(key: str) -> str:
     return THEME_NAME.get(key, key)
 
 
-def outcome_word(result: str) -> str:
-    """The words on one row's status badge. Takes `Result.value`, a plain string."""
+def outcome_word(result: Result) -> str:
+    """The words on one row's status badge."""
     return OUTCOME_WORD.get(result, "")
 
 

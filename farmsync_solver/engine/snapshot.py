@@ -11,7 +11,9 @@ mutates one in place.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
+
+from ..errors import ErrorCode
 
 
 class Result(str, Enum):
@@ -40,9 +42,43 @@ class RunState(str, Enum):
     STOPPING = "stopping"
 
 
+class Headline(Enum):
+    """The named line at the top of the left panel (spec 4.2).
+
+    A member, never the sentence itself. The engine says *which* line the user is
+    reading and `ui/messages.py` says what it reads, which is what keeps every
+    word in one module and the engine clear of the UI package (ADR 0005).
+
+    A run that ended on a fault has no member here: its headline is the
+    `ErrorCode` that ended it, and the error table already holds that sentence.
+
+    A plain `Enum`, unlike `RunState` and `Result` beside it: a member is only
+    ever compared and logged by name, so a value would be a second identity
+    nobody reads — the very thing this enum was written to take away.
+    """
+
+    STARTING = auto()
+    DISCOVERING = auto()
+    SOLVING = auto()
+    RESTING = auto()
+    NO_ACCOUNTS = auto()  # the round found nothing to check
+    NO_FARMSYNC = auto()  # farmsync was not reached; the next round tries again
+    WAITING_PAUSED = auto()
+    WAITING_UNREACHABLE = auto()
+    STOPPING = auto()
+    STOPPED = auto()
+    CRASHED = auto()  # an engine bug, which reads as its own sentence (spec 5.6)
+
+
 @dataclass(frozen=True)
 class RunSnapshot:
     """The whole picture of a run at one moment. Never holds a cookie or a key.
+
+    Every field is a fact, never a sentence: the words for one are the UI's to
+    pick (ADR 0005). `headline` names the line the panel shows, `seconds_left`
+    and `seconds_waited` are what the moving line under it counts, and `detail`
+    is the raw text of the fault that ended the run — the one string here the
+    user reads as it stands, behind the **Details** link of spec 5.6.
 
     `credit_left` is money and `estimated_solves` is solves: spec 7 shows both,
     solves first. `done` and `total` count this round; every other counter counts
@@ -50,8 +86,8 @@ class RunSnapshot:
     """
 
     state: RunState = RunState.IDLE
-    headline: str = ""
-    message: str = ""
+    headline: Headline | ErrorCode | None = None
+    detail: str = ""
     round_number: int = 0
     done: int = 0
     total: int = 0
@@ -60,6 +96,10 @@ class RunSnapshot:
     failed: int = 0
     credit_left: float = 0.0
     estimated_solves: int = 0
+    # The countdown of the Resting and Waiting lines. `None` while a waiting run
+    # has a knock out: that is the one moment with nothing to count down to.
+    seconds_left: int | None = None
+    seconds_waited: float = 0.0
 
 
 @dataclass(frozen=True)

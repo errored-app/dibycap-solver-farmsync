@@ -16,7 +16,7 @@ import pytest
 
 from farmsync_solver import logging_setup
 from farmsync_solver.engine import run as engine_run
-from farmsync_solver.engine.snapshot import RunState
+from farmsync_solver.engine.snapshot import Headline, RunState
 from farmsync_solver.errors import AppError, ErrorCode
 from farmsync_solver.ui import messages
 
@@ -199,12 +199,26 @@ def test_a_run_still_finishes_when_logging_is_off(
 def test_the_sentence_the_user_saw_is_logged_by_its_name(
     monkeypatch: pytest.MonkeyPatch, engines: list, log_file: Path
 ) -> None:
-    """Spec 8.1: technical tone — the constant, not the friendly words."""
+    """Spec 8.1: technical tone — the `Headline` name, not the friendly words."""
     engine, _, _ = build(monkeypatch, engines, farm=FakeFarmsync([]))
 
     engine.start(API_KEY, TOKEN, 100)
     run_one_round(engine)
 
     shown = [row["message"] for row in events(read(log_file), "shown")]
-    assert "RUN_NO_ACCOUNTS" in shown
-    assert messages.RUN_NO_ACCOUNTS not in "\n".join(read(log_file))
+    assert "NO_ACCOUNTS" in shown
+    assert messages.headline(Headline.NO_ACCOUNTS) not in "\n".join(read(log_file))
+
+
+def test_a_run_that_ended_on_a_fault_logs_the_code_it_ended_on(
+    monkeypatch: pytest.MonkeyPatch, engines: list, log_file: Path
+) -> None:
+    """The headline of a fault is its code, so the log line names the code."""
+    refused = AppError(ErrorCode.BAD_API_KEY, "invalid_api_key")
+    engine, _, _ = build(monkeypatch, engines, client=FakeDibycap(refused))
+
+    engine.start(API_KEY, TOKEN, 100)
+    assert wait_for(lambda: engine.snapshot().state is RunState.IDLE)
+
+    shown = [row["message"] for row in events(read(log_file), "shown")]
+    assert "BAD_API_KEY" in shown

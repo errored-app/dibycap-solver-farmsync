@@ -18,9 +18,8 @@ from typing import Any, Callable
 import pytest
 
 from farmsync_solver.engine import Engine, run
-from farmsync_solver.engine.snapshot import AccountRow, Result, RunSnapshot, RunState
+from farmsync_solver.engine.snapshot import AccountRow, Headline, Result, RunSnapshot, RunState
 from farmsync_solver.errors import AppError, ErrorCode
-from farmsync_solver.ui import messages
 
 from conftest import wait_for
 
@@ -226,7 +225,7 @@ def test_a_round_with_nothing_to_do_says_so_and_rests(
 
     assert client.solved == []
     assert engine.snapshot().total == 0
-    assert engine.snapshot().headline == messages.RUN_NO_ACCOUNTS
+    assert engine.snapshot().headline == Headline.NO_ACCOUNTS
 
 
 def test_a_second_round_follows_the_rest(
@@ -280,7 +279,7 @@ def test_an_unreachable_balance_refuses_the_run(
 
     assert farm.calls == 0
     assert client.solved == []
-    assert engine.snapshot().headline == messages.for_code(ErrorCode.NO_INTERNET)
+    assert engine.snapshot().headline == ErrorCode.NO_INTERNET
 
 
 def test_a_key_with_no_credit_left_refuses_the_run(
@@ -295,7 +294,7 @@ def test_a_key_with_no_credit_left_refuses_the_run(
     assert wait_for(lambda: engine.snapshot().state is RunState.IDLE)
 
     assert farm.calls == 0
-    assert engine.snapshot().headline == messages.for_code(ErrorCode.NO_CREDIT)
+    assert engine.snapshot().headline == ErrorCode.NO_CREDIT
 
 
 def test_a_balance_with_no_max_concurrent_refuses_the_run(
@@ -309,8 +308,8 @@ def test_a_balance_with_no_max_concurrent_refuses_the_run(
     assert wait_for(lambda: engine.snapshot().state is RunState.IDLE)
 
     assert farm.calls == 0
-    assert engine.snapshot().headline == messages.RUN_CRASHED
-    assert engine.snapshot().message == "balance carried no max_concurrent"
+    assert engine.snapshot().headline == Headline.CRASHED
+    assert engine.snapshot().detail == "balance carried no max_concurrent"
 
 
 # --- what ends a run -------------------------------------------------------
@@ -329,7 +328,7 @@ def test_a_terminal_solver_error_ends_the_run(
     engine.start(API_KEY, TOKEN, 100)
     assert wait_for(lambda: engine.snapshot().state is RunState.IDLE)
 
-    assert engine.snapshot().headline == messages.for_code(ErrorCode.NO_CREDIT)
+    assert engine.snapshot().headline == ErrorCode.NO_CREDIT
 
 
 def test_a_refused_farm_token_ends_the_run(
@@ -345,7 +344,7 @@ def test_a_refused_farm_token_ends_the_run(
     assert wait_for(lambda: engine.snapshot().state is RunState.IDLE)
 
     assert farm.calls == 1  # not retried: every later round is refused the same way
-    assert engine.snapshot().headline == messages.for_code(ErrorCode.BAD_FARM_TOKEN)
+    assert engine.snapshot().headline == ErrorCode.BAD_FARM_TOKEN
 
 
 def test_an_unreachable_farmsync_is_retried_and_then_waited_out(
@@ -364,7 +363,7 @@ def test_an_unreachable_farmsync_is_retried_and_then_waited_out(
     assert wait_for(lambda: engine.snapshot().state is RunState.RESTING)
 
     assert farm.calls == 3
-    assert engine.snapshot().headline == messages.RUN_NO_FARMSYNC
+    assert engine.snapshot().headline == Headline.NO_FARMSYNC
 
 
 # --- credit ----------------------------------------------------------------
@@ -436,7 +435,7 @@ def test_a_refresh_that_reads_zero_stops_the_run(
     engine.start(API_KEY, TOKEN, 100)
     assert wait_for(lambda: engine.snapshot().state is RunState.IDLE)
 
-    assert engine.snapshot().headline == messages.for_code(ErrorCode.NO_CREDIT)
+    assert engine.snapshot().headline == ErrorCode.NO_CREDIT
 
 
 def test_a_missed_refresh_does_not_stop_the_run(
@@ -590,7 +589,7 @@ def test_a_paused_service_waits_instead_of_ending_the_run(
 
     picture = engine.snapshot()
     assert picture.state is RunState.WAITING
-    assert picture.headline == messages.RUN_WAITING_PAUSED
+    assert picture.headline == Headline.WAITING_PAUSED
 
 
 def test_a_service_that_cannot_be_reached_says_so_instead(
@@ -599,7 +598,7 @@ def test_a_service_that_cannot_be_reached_says_so_instead(
     """Someone whose wifi is off must not read that the service is paused."""
     engine, _, _ = waiting(monkeypatch, engines, fault=UNREACHABLE)
 
-    assert engine.snapshot().headline == messages.RUN_WAITING_UNREACHABLE
+    assert engine.snapshot().headline == Headline.WAITING_UNREACHABLE
 
 
 def test_farmsync_is_left_alone_while_the_run_waits(
@@ -671,7 +670,7 @@ def test_a_key_fault_found_while_waiting_still_ends_the_run(
     service.fault = AppError(ErrorCode.BAD_API_KEY, "invalid_api_key")
 
     assert wait_for(lambda: engine.snapshot().state is RunState.IDLE), engine.snapshot()
-    assert engine.snapshot().headline == messages.for_code(ErrorCode.BAD_API_KEY)
+    assert engine.snapshot().headline == ErrorCode.BAD_API_KEY
 
 
 def test_a_run_starts_and_waits_when_balance_itself_is_down(
@@ -685,7 +684,7 @@ def test_a_run_starts_and_waits_when_balance_itself_is_down(
 
     engine.start(API_KEY, TOKEN, 100)
     assert wait_for(lambda: engine.snapshot().state is RunState.WAITING), engine.snapshot()
-    assert engine.snapshot().headline == messages.RUN_WAITING_UNREACHABLE
+    assert engine.snapshot().headline == Headline.WAITING_UNREACHABLE
     assert farm.calls == 1  # discovered once, then left alone
 
     # The fourth `/balance` answers, so the run picks itself up.
@@ -703,7 +702,7 @@ def test_a_balance_that_refuses_the_key_still_refuses_the_run(
     engine.start(API_KEY, TOKEN, 100)
 
     assert wait_for(lambda: engine.snapshot().state is RunState.IDLE), engine.snapshot()
-    assert engine.snapshot().headline == messages.for_code(ErrorCode.BAD_API_KEY)
+    assert engine.snapshot().headline == ErrorCode.BAD_API_KEY
     assert farm.calls == 0
 
 
@@ -730,13 +729,14 @@ def test_the_waiting_line_moves_between_knocks(
     monkeypatch.setattr(run, "WAIT_SECONDS", 3.0)
     monkeypatch.setattr(run, "TICK_SECONDS", 0.02)
 
-    seen: set[str] = set()
+    seen: set[int | None] = set()
 
     def counted_down() -> bool:
-        seen.add(engine.snapshot().message)
-        return len([line for line in seen if "Checking again" in line]) >= 2
+        seen.add(engine.snapshot().seconds_left)
+        return len([left for left in seen if left is not None]) >= 2
 
     assert wait_for(counted_down), seen
+    assert engine.snapshot().seconds_waited > 0
 
 
 def test_the_waiting_line_says_the_knock_is_out_while_it_hangs(
@@ -757,9 +757,8 @@ def test_the_waiting_line_says_the_knock_is_out_while_it_hangs(
     service.hang.set()
 
     try:
-        assert wait_for(lambda: engine.snapshot().message.endswith("Checking now…")), (
-            engine.snapshot()
-        )
+        # No countdown while the knock is out: there is nothing to count down to.
+        assert wait_for(lambda: engine.snapshot().seconds_left is None), engine.snapshot()
     finally:
         service.let_go.set()
 

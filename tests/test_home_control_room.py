@@ -16,7 +16,14 @@ import pytest
 from nicegui.testing import User
 
 from farmsync_solver import config, engine as engine_module, keys
-from farmsync_solver.engine.snapshot import IDLE, AccountRow, Result, RunSnapshot, RunState
+from farmsync_solver.engine.snapshot import (
+    IDLE,
+    AccountRow,
+    Headline,
+    Result,
+    RunSnapshot,
+    RunState,
+)
 from farmsync_solver.ui import home, messages
 
 pytest_plugins = ["nicegui.testing.user_plugin"]
@@ -200,12 +207,12 @@ async def test_an_engine_bug_is_a_headline_and_never_a_dialog(
     run_engine.show(
         state=RunState.IDLE,
         round_number=1,
-        headline=messages.RUN_CRASHED,
-        message="KeyError: 'accounts'",
+        headline=Headline.CRASHED,
+        detail="KeyError: 'accounts'",
     )
     await asyncio.sleep(SETTLE_SECONDS)
 
-    await user.should_see(messages.RUN_CRASHED)
+    await user.should_see(messages.headline(Headline.CRASHED))
     await user.should_see(messages.HOME_DETAILS)  # a link, not a popup
     assert _element(user, "closing-dialog").value is False  # nothing popped up
 
@@ -215,7 +222,7 @@ async def test_a_dibycap_code_stays_in_its_row(
     user: User, saved_keys: None, run_engine: FakeEngine
 ) -> None:
     await _open_home(user)
-    run_engine.show(state=RunState.SOLVING, round_number=1, headline=messages.RUN_SOLVING)
+    run_engine.show(state=RunState.SOLVING, round_number=1, headline=Headline.SOLVING)
     run_engine.finish("bob", Result.FAILED, detail="UPSTREAM_TIMEOUT")
     await asyncio.sleep(SETTLE_SECONDS)
 

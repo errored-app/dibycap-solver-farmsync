@@ -35,7 +35,7 @@ from nicegui import run, ui
 from nicegui.events import KeyEventArguments
 
 from .. import credit, engine, keys
-from ..engine.snapshot import AccountRow, RunSnapshot, RunState
+from ..engine.snapshot import AccountRow, Result, RunSnapshot, RunState
 from ..errors import AppError, ErrorCode
 from ..keys import KeyCheck
 from . import messages, update_offer
@@ -53,7 +53,11 @@ REFRESH_SECONDS = 0.2
 
 # The badge colour for each outcome. Failures are **orange, not red** (spec 4.2):
 # 28.6% of attempts fail, so a failure is routine, not an alarm.
-BADGE_COLOUR: dict[str, str] = {"joined": "green", "solved": "blue", "failed": "orange"}
+BADGE_COLOUR: dict[Result, str] = {
+    Result.JOINED: "green",
+    Result.SOLVED: "blue",
+    Result.FAILED: "orange",
+}
 
 TABLE_COLUMNS = [
     {"name": "status", "label": messages.TABLE_STATUS, "field": "status", "align": "left"},
@@ -99,6 +103,9 @@ class Panel:
     `credit` is empty when the run has not read a balance yet, which means "leave
     the header the open-time re-check wrote". `details` is empty unless a run
     ended on a fault, and holds its raw text — the headline never does (spec 4.2).
+
+    This is where a snapshot becomes sentences: the engine sends facts and every
+    word below is picked here (ADR 0005).
     """
 
     button: str
@@ -170,11 +177,12 @@ def panel_of(snapshot: RunSnapshot, can_start: bool) -> Panel:
     return Panel(
         button=_button_text(snapshot.state),
         button_enabled=can_start if idle else snapshot.state is not RunState.STOPPING,
-        headline=snapshot.headline or messages.HOME_NO_RUNS,
-        # An Idle snapshot's message is the raw text of whatever ended the run, so
-        # it belongs behind Details, never on the panel as a sentence.
-        message="" if idle else snapshot.message,
-        details=snapshot.message if idle else "",
+        headline=messages.headline(snapshot.headline) or messages.HOME_NO_RUNS,
+        message=_message(snapshot),
+        # The raw text of whatever ended the run. It belongs behind Details, never
+        # on the panel as a sentence — and behind a **Details** link on a live run
+        # least of all (spec 5.6), so only an Idle snapshot is asked for one.
+        details=snapshot.detail if idle else "",
         spinner=snapshot.state in (RunState.DISCOVERING, RunState.STOPPING),
         fraction=_fraction(snapshot),
         round_number=f"{snapshot.round_number:,}",
@@ -186,6 +194,23 @@ def panel_of(snapshot: RunSnapshot, can_start: bool) -> Panel:
     )
 
 
+def _message(snapshot: RunSnapshot) -> str:
+    """The moving line under the headline, built from what the snapshot counts.
+
+    Three states have something to say and the rest say nothing. The engine sends
+    the numbers only (ADR 0005), so this is where they become words: how far
+    through the round, how long until the next one, and how long a waiting run
+    has been waiting.
+    """
+    if snapshot.state is RunState.SOLVING:
+        return messages.run_progress(snapshot.done, snapshot.total)
+    if snapshot.state is RunState.RESTING:
+        return messages.run_rest(snapshot.seconds_left or 0)
+    if snapshot.state is RunState.WAITING:
+        return messages.run_waiting(snapshot.seconds_waited, snapshot.seconds_left)
+    return ""
+
+
 def table_rows(
     rows: list[AccountRow], failed_only: bool, now: float | None = None
 ) -> list[dict[str, Any]]:
@@ -195,12 +220,12 @@ def table_rows(
     132-account round, "show only the ones that failed" is the whole need.
     """
     moment = time.time() if now is None else now
-    wanted = [row for row in rows if not failed_only or row.outcome.value == "failed"]
+    wanted = [row for row in rows if not failed_only or row.outcome is Result.FAILED]
     return [
         {
             "key": f"{row.at:.6f}-{row.username}",
-            "status": messages.outcome_word(row.outcome.value),
-            "colour": BADGE_COLOUR.get(row.outcome.value, "grey"),
+            "status": messages.outcome_word(row.outcome),
+            "colour": BADGE_COLOUR.get(row.outcome, "grey"),
             "account": row.username,
             "detail": row.detail,
             "elapsed": messages.elapsed(moment - row.at),

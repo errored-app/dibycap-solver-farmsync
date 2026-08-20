@@ -5,7 +5,15 @@ from dataclasses import replace
 
 import pytest
 
-from farmsync_solver.engine.snapshot import IDLE, AccountRow, Result, RunSnapshot, RunState
+from farmsync_solver.engine.snapshot import (
+    IDLE,
+    AccountRow,
+    Headline,
+    Result,
+    RunSnapshot,
+    RunState,
+)
+from farmsync_solver.errors import ErrorCode
 from farmsync_solver.ui import home, messages
 
 
@@ -63,17 +71,45 @@ def test_solving_before_the_first_count_shows_no_bar() -> None:
 
 
 def test_resting_shows_the_countdown_and_neither_indicator() -> None:
-    resting = replace(
-        IDLE,
-        state=RunState.RESTING,
-        headline=messages.RUN_RESTING,
-        message=messages.run_rest(9),
-    )
+    resting = replace(IDLE, state=RunState.RESTING, headline=Headline.RESTING, seconds_left=9)
     panel = home.panel_of(resting, can_start=False)
 
     assert panel.message == "Next round in 9s"
     assert panel.spinner is False
     assert panel.fraction is None
+
+
+# --- the moving line, built here from what the snapshot counts (ADR 0005) ----
+
+
+def test_solving_counts_the_accounts_of_this_round() -> None:
+    solving = replace(IDLE, state=RunState.SOLVING, done=87, total=132)
+
+    assert home.panel_of(solving, can_start=False).message == "87 of 132"
+
+
+def test_waiting_says_how_long_it_has_been_and_when_the_next_knock_lands() -> None:
+    """ADR 0003's Waiting line: the news first, then the heartbeat."""
+    waiting = replace(IDLE, state=RunState.WAITING, seconds_waited=125.0, seconds_left=17)
+
+    assert home.panel_of(waiting, can_start=False).message == (
+        "Waiting for 2m 5s. Checking again in 17s"
+    )
+
+
+def test_a_knock_that_is_out_says_so_instead_of_counting_down() -> None:
+    """The one moment something is happening, and the one most likely to hang."""
+    knocking = replace(IDLE, state=RunState.WAITING, seconds_waited=125.0, seconds_left=None)
+
+    assert home.panel_of(knocking, can_start=False).message.endswith("Checking now…")
+
+
+@pytest.mark.parametrize("state", [RunState.IDLE, RunState.DISCOVERING, RunState.STOPPING])
+def test_the_states_with_nothing_to_count_say_nothing(state: RunState) -> None:
+    """A stale countdown left over from the last round would read as a live one."""
+    left_over = replace(IDLE, state=state, seconds_left=9, seconds_waited=60.0)
+
+    assert home.panel_of(left_over, can_start=False).message == ""
 
 
 # --- the numbers and the credit ---------------------------------------------
@@ -113,25 +149,32 @@ def test_an_app_that_has_never_run_says_so() -> None:
 
 
 def test_an_engine_bug_is_a_plain_headline_with_the_raw_text_behind_details() -> None:
-    crashed = replace(
-        IDLE, headline=messages.RUN_CRASHED, message="KeyError: 'accounts'"
-    )
+    crashed = replace(IDLE, headline=Headline.CRASHED, detail="KeyError: 'accounts'")
     panel = home.panel_of(crashed, can_start=True)
 
-    assert panel.headline == messages.RUN_CRASHED
+    assert panel.headline == messages.headline(Headline.CRASHED)
     assert panel.details == "KeyError: 'accounts'"
     assert panel.message == ""
 
 
+def test_a_run_that_ended_on_a_fault_reads_as_that_fault() -> None:
+    """The code is the headline; the sentence for it is the error table's."""
+    refused = replace(IDLE, headline=ErrorCode.BAD_API_KEY, detail="invalid_api_key")
+
+    assert home.panel_of(refused, can_start=True).headline == messages.for_code(
+        ErrorCode.BAD_API_KEY
+    )
+
+
 def test_a_clean_stop_offers_no_details_link() -> None:
-    stopped = replace(IDLE, headline=messages.RUN_STOPPED, round_number=2)
+    stopped = replace(IDLE, headline=Headline.STOPPED, round_number=2)
 
     assert home.panel_of(stopped, can_start=True).details == ""
 
 
 @pytest.mark.parametrize("code", ["INTERNAL_ERROR", "CLASSIFICATION_ERROR", "UPSTREAM_TIMEOUT"])
 def test_no_dibycap_code_ever_reaches_the_headline(code: str) -> None:
-    solving = replace(IDLE, state=RunState.SOLVING, headline=messages.RUN_SOLVING)
+    solving = replace(IDLE, state=RunState.SOLVING, headline=Headline.SOLVING)
     rows = [_row("ada", Result.FAILED, at=0.0, detail=code)]
 
     assert code not in home.panel_of(solving, can_start=False).headline

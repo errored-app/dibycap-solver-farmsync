@@ -86,6 +86,15 @@ result is one of three — **joined** (got in, no captcha), **solved** (a captch
 was cracked), **failed** (could not be checked). A failed result carries the raw
 dibycap code as its detail. Failures are routine, not an alarm.
 
+## Headline
+
+The named line at the top of the left panel: which of a run's moments the user is
+being told about — getting ready, finding accounts, waiting for the service,
+stopped. It is a name the engine sets, never the English it reads as; the words
+for one are picked when the panel is painted
+([ADR 0005](docs/adr/0005-the-snapshot-carries-facts-not-sentences.md)). A run
+that ended on a fault takes the fault's code as its headline.
+
 ## Speed
 
 A user-facing percentage (25/50/75/100) of the key's reported `max_concurrent`.

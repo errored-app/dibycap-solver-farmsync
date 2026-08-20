@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import builtins
 import importlib
+import subprocess
 import sys
 from pathlib import Path
 
@@ -41,6 +42,28 @@ OUR_MODULES = ["farmsync_solver." + name.replace("/", ".")[:-3] for name in REQU
 @pytest.mark.parametrize("relative", REQUIRED_FILES)
 def test_the_module_exists(relative: str) -> None:
     assert (PACKAGE / relative).is_file()
+
+
+def test_the_engine_never_imports_the_ui() -> None:
+    """Spec 9.2's seam, one-way. Held by types now, not by a comment (ADR 0005).
+
+    Run in a fresh interpreter: by the time this file's other tests have run, a
+    session has half the app in `sys.modules` and would pass whatever the engine
+    imports.
+    """
+    probe = (
+        "import sys, farmsync_solver.engine.run as _; "
+        "print(sorted(n for n in sys.modules if n.startswith('farmsync_solver.ui')))"
+    )
+    loaded = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=PACKAGE.parent,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert loaded.stdout.strip() == "[]"
 
 
 def test_the_dev_version_is_a_placeholder() -> None:

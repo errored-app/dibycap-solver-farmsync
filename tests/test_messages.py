@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 
+from farmsync_solver.engine.snapshot import Headline
 from farmsync_solver.errors import ErrorCode
 from farmsync_solver.ui import messages
 
@@ -18,6 +19,26 @@ def test_every_code_has_a_sentence(code: ErrorCode) -> None:
 
 def test_an_unknown_code_still_answers() -> None:
     assert messages.for_code(None) == messages.for_code(ErrorCode.UNKNOWN)
+
+
+@pytest.mark.parametrize("shown", list(Headline))
+def test_every_headline_has_a_sentence(shown: Headline) -> None:
+    """The engine sets a member; nothing on screen may come out blank."""
+    sentence = messages.headline(shown)
+
+    assert sentence
+    assert shown.name not in sentence  # no engine names on screen
+    assert sentence[0].isupper() and sentence.endswith((".", "…"))
+
+
+def test_a_run_that_ended_on_a_fault_reads_as_that_fault() -> None:
+    """The headline of a fault is the code, so the sentence is the error table's."""
+    assert messages.headline(ErrorCode.NO_CREDIT) == messages.for_code(ErrorCode.NO_CREDIT)
+
+
+def test_no_headline_at_all_reads_as_nothing() -> None:
+    """The snapshot before any run. Home puts its own "No runs yet." there."""
+    assert messages.headline(None) == ""
 
 
 def test_the_success_note_shows_the_credit_with_separators() -> None:
@@ -76,4 +97,4 @@ def test_the_waiting_line_says_so_while_the_knock_is_out() -> None:
 
 def test_the_farmsync_retry_leaves_the_timing_to_the_countdown() -> None:
     """The rest countdown sits right under this line and already says when."""
-    assert "minute" not in messages.RUN_NO_FARMSYNC
+    assert "minute" not in messages.headline(Headline.NO_FARMSYNC)

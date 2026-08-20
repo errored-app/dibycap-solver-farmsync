@@ -391,7 +391,7 @@ not the count it declined.
 | Rotation | **One file per run**, named by local date and time. |
 | Pruning | On startup: drop files older than 7 days, keep at most 20. |
 | Format | Fixed-shape plain text: `2026-08-18 14:03:11  INFO  solve  account=8812 result=joined` |
-| Tone | **Technical** — real error codes, real HTTP status, real exception names, plus the `ui/messages.py` code for anything the user saw on screen. |
+| Tone | **Technical** — real error codes, real HTTP status, real exception names, plus the `Headline` name of whatever the user was reading on screen ([ADR 0005](../adr/0005-the-snapshot-carries-facts-not-sentences.md)). |
 | Detail | One line per **account attempt** (id, result, error code), plus round start/end and every run-state change. |
 | Verbosity switch | **None.** One format, always on. |
 
@@ -484,9 +484,15 @@ snapshot and appends rows — no event-kind dispatch, which is exactly the code
 `RunSnapshot` is one **flat** frozen dataclass:
 
 ```
-state, headline, message, round_number, done, total,
-joined, solved, failed, credit_left, estimated_solves
+state, headline, detail, round_number, done, total,
+joined, solved, failed, credit_left, estimated_solves,
+seconds_left, seconds_waited
 ```
+
+Every field is a fact and none is a sentence
+([ADR 0005](../adr/0005-the-snapshot-carries-facts-not-sentences.md)): `headline`
+is a `Headline` member or the `ErrorCode` a run ended on, the two `seconds` fields
+are what the line under it counts, and `detail` is the raw text of that fault.
 
 `AccountRow` is `username, outcome, detail, at`.
 
