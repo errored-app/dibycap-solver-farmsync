@@ -46,6 +46,35 @@ When your output names a domain concept (in an issue title, a refactor proposal,
 
 If the concept you need isn't in the glossary yet, that's a signal — either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/domain-modeling`).
 
+## An ADR that changes the spec says which section
+
+`docs/spec/farmsync-solver-desktop-app.md` is written to be implementable without
+the issue tracker. So an ADR that contradicts it splits the project in two: the
+code follows the ADR, and anyone building from the spec builds the old behaviour.
+That has already happened twice, in
+[#56](https://github.com/errored-app/dibycap-solver-farmsync/issues/56) and
+[#57](https://github.com/errored-app/dibycap-solver-farmsync/issues/57), both from
+ADRs written after the spec was signed off.
+
+Before an ADR is finished, grep the spec for what it decides. If a section now
+says something the ADR contradicts, the ADR carries a **Reverses** line naming
+those sections:
+
+> **Reverses:** spec §5.1, §5.4, §5.5 and §9.7, which describe a paused service as
+> terminal. Raised as #56.
+
+That line is a claim that named sections of the spec are wrong until someone
+fixes them, so **raising the fix is part of writing the ADR**, not a later tidy-up.
+Fixing the spec in the same change is better still, when the ADR is small enough
+that it can be.
+
+Most ADRs reverse nothing and carry no line. Adding one where there is no conflict
+is worse than useless — it teaches readers to skip it.
+
+`CONTEXT.md` is not covered by this rule, because it does not need to be: an ADR
+that renames or redefines a term updates the glossary in the same change. There is
+no version of that drift a reader could detect.
+
 ## Flag ADR conflicts
 
 If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
