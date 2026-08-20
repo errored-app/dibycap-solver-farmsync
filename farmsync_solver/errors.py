@@ -2,10 +2,18 @@
 
 The codes are stable strings. The UI maps them to sentences in `ui/messages.py`;
 nothing here holds user-facing copy.
+
+`REFUSED_STATUS` is here rather than beside either client because it is only
+ever read on the way to a code below.
 """
 from __future__ import annotations
 
 from enum import Enum
+
+# The two HTTP statuses that mean "your credential was refused". Each client
+# turns them into its own code — `BAD_API_KEY` for dibycap, `BAD_FARM_TOKEN` for
+# farmsync — but which statuses count is one fact, and it is written here once.
+REFUSED_STATUS = (401, 403)
 
 
 class ErrorCode(str, Enum):

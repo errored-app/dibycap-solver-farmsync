@@ -18,6 +18,7 @@ REQUIRED_FILES = [
     "keys.py",
     "logging_setup.py",
     "looks.py",
+    "paths.py",
     "single_instance.py",
     "updater.py",
     "engine/__init__.py",

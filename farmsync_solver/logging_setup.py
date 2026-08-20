@@ -10,14 +10,13 @@ Two rules from spec 8.3 shape this module:
 from __future__ import annotations
 
 import logging
-import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import TracebackType
 from typing import Callable
 
-from ._version import APP_NAME
+from . import paths
 
 LINE_FORMAT = "%(asctime)s  %(levelname)s  %(message)s"
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -36,9 +35,7 @@ _previous_excepthook: ExceptHook | None = None
 
 def default_log_dir() -> Path:
     r"""`%APPDATA%\FarmsyncSolver\logs`, beside config.json."""
-    appdata = os.environ.get("APPDATA")
-    base = Path(appdata) if appdata else Path.home() / "AppData" / "Roaming"
-    return base / APP_NAME / "logs"
+    return paths.app_data_dir() / "logs"
 
 
 def configure(log_dir: Path | None = None) -> Path | None:

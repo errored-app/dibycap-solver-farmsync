@@ -14,7 +14,6 @@ from typing import Any
 
 import pytest
 
-from farmsync_solver.engine.snapshot import RunState
 from farmsync_solver.ui import closing
 from tests.fakes import FakeResponse
 
@@ -50,21 +49,6 @@ def _ctrl(key: str, keydown: bool = True, ctrl: bool = True) -> Any:
         modifiers=SimpleNamespace(ctrl=ctrl),
         key=SimpleNamespace(name=key),
     )
-
-
-# --- which runs are asked about ---------------------------------------------
-
-
-def test_an_idle_app_closes_without_a_question() -> None:
-    assert closing.should_confirm_close(RunState.IDLE) is False
-
-
-@pytest.mark.parametrize(
-    "state",
-    [RunState.DISCOVERING, RunState.SOLVING, RunState.RESTING, RunState.WAITING, RunState.STOPPING],
-)
-def test_a_run_in_progress_is_asked_about_first(state: RunState) -> None:
-    assert closing.should_confirm_close(state) is True
 
 
 # --- the question itself -----------------------------------------------------

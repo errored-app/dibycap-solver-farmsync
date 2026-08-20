@@ -11,12 +11,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ..errors import AppError, ErrorCode
+from ..errors import REFUSED_STATUS, AppError, ErrorCode
 from .eligibility import eligible_accounts
 
 BASE_URL = "https://api.farmsync.cloud"
 TIMEOUT_SECONDS = 30
-REFUSED_STATUS = (401, 403)
 
 _log = logging.getLogger(__name__)
 

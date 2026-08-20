@@ -12,6 +12,10 @@ adapters on top of it:
 Ctrl+W is not a third way in. It reaches the same `CloseQuestion` through
 `on_key`, so the keystroke and the X cannot drift apart.
 
+Which runs are asked about is not this module's rule to keep: a run is on
+when `RunSnapshot.is_running` says so, and `engine.a_run_is_going` is the
+default behind the `is_running` argument below.
+
 One question lives for the life of the process, because Home is rebuilt on every
 hop back from Settings while the window's X and the run behind it are older than
 any screen. Home does one thing with it: registers the dialog to ask in, and
@@ -37,7 +41,6 @@ from nicegui import app as native_app
 from nicegui.events import KeyEventArguments
 
 from .. import engine
-from ..engine.snapshot import RunState
 
 # Mounted on the NiceGUI server by `mount`. Underscored, because it is a door
 # for the window process and not part of any page.
@@ -50,20 +53,6 @@ VETO = False
 ALLOW = None
 
 _log = logging.getLogger(__name__)
-
-
-def should_confirm_close(state: RunState) -> bool:
-    """Spec 5.3: a run in progress is asked about before the window closes."""
-    return state is not RunState.IDLE
-
-
-def a_run_is_going() -> bool:
-    """The app's answer to whether there is anything to ask about.
-
-    A bool, not a snapshot: the question has no business knowing what a run is
-    made of, and a test that wants one says `is_running=lambda: True`.
-    """
-    return should_confirm_close(engine.current().snapshot().state)
 
 
 def stop_the_run() -> None:
@@ -85,7 +74,7 @@ class CloseQuestion:
 
     def __init__(
         self,
-        is_running: Callable[[], bool] = a_run_is_going,
+        is_running: Callable[[], bool] = engine.a_run_is_going,
         stop: Callable[[], Any] = stop_the_run,
         shutdown: Callable[[], Any] = close_the_window,
     ) -> None:

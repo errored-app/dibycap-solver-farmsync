@@ -1,8 +1,9 @@
-r"""The only reader of %APPDATA%\FarmsyncSolver\config.json and DPAPI.
+"""The only reader of config.json and DPAPI.
 
 Spec 10. Three rules shape this module:
 
-- Nothing else in the app knows the path, the file shape, or DPAPI.
+- Nothing else in the app knows the file's name, its shape, or DPAPI. The
+  folder it sits in belongs to `paths`, which the logs and updates share.
 - The file holds exactly five fields. `place_id`, `threads` and `round_delay`
   are gone: two were dead, and the thread count is derived, never stored.
 - Missing, unparseable and undecryptable all collapse to one behaviour: the bad
@@ -14,14 +15,12 @@ import base64
 import ctypes
 import json
 import logging
-import os
 from ctypes import wintypes
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from . import looks
-from ._version import APP_NAME
+from . import looks, paths
 
 CONFIG_VERSION = 1
 DEFAULT_SPEED_PERCENT = 100
@@ -47,9 +46,7 @@ class Config:
 
 def default_path() -> Path:
     r"""`%APPDATA%\FarmsyncSolver\config.json`, per Windows user."""
-    appdata = os.environ.get("APPDATA")
-    base = Path(appdata) if appdata else Path.home() / "AppData" / "Roaming"
-    return base / APP_NAME / "config.json"
+    return paths.app_data_dir() / "config.json"
 
 
 def load(path: Path | None = None) -> Config:

@@ -667,12 +667,10 @@ def test_stop_ends_a_waiting_run(
 def test_a_waiting_run_is_a_run_the_window_asks_about(
     monkeypatch: pytest.MonkeyPatch, engines: list[Engine]
 ) -> None:
-    """Spec 5.3's close question reads `is not IDLE`, and Waiting is not Idle."""
-    from farmsync_solver.ui import closing
-
+    """Spec 5.3's close question reads `is_running`, and a waiting run is running."""
     engine, _, _ = waiting(monkeypatch, engines)
 
-    assert closing.should_confirm_close(engine.snapshot().state)
+    assert engine.snapshot().is_running
 
 
 def test_a_key_fault_found_while_waiting_still_ends_the_run(

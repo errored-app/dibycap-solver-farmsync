@@ -15,11 +15,10 @@ import re
 import time
 from typing import Any, Callable
 
-from ..errors import AppError, ErrorCode, Severity
+from ..errors import REFUSED_STATUS, AppError, ErrorCode, Severity
 
 API_URL = "https://api.dibycap.com"
 TIMEOUT_SECONDS = 15
-REFUSED_STATUS = (401, 403)
 POLL_ATTEMPTS = 180
 DEFAULT_RETRY_MS = 1000
 MIN_POLL_SECONDS = 0.2

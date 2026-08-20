@@ -28,7 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from . import single_instance
+from . import paths, single_instance
 from ._version import APP_NAME, VERSION
 from .logging_setup import default_log_dir
 
@@ -335,6 +335,11 @@ def _parts(version: str) -> tuple[tuple[int, int, int], int] | None:
     return ((major, minor, patch), 0 if match.group("pre") else 1)
 
 
+def default_update_dir() -> Path:
+    r"""`%APPDATA%\FarmsyncSolver\updates`, beside the logs."""
+    return paths.app_data_dir() / "updates"
+
+
 def _folder(folder: Path | None) -> Path:
     """Where the installer is downloaded to. Beside the logs, never in the app folder.
 
@@ -346,7 +351,7 @@ def _folder(folder: Path | None) -> Path:
     the next download is what tidies up, and the folder never holds more than one
     ~80 MB file.
     """
-    target = folder if folder is not None else default_log_dir().parent / "updates"
+    target = folder if folder is not None else default_update_dir()
     target.mkdir(parents=True, exist_ok=True)
     for old in target.glob("*.exe"):
         _remove(old)

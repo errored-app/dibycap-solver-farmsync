@@ -42,15 +42,6 @@ _DOT_OFF = "radio_button_unchecked"
 _log = logging.getLogger(__name__)
 
 
-def is_running() -> bool:
-    """Whether a run is going, which is what locks the keys and Speed (spec 5.7).
-
-    The same question the update offer asks before it installs, so it is asked
-    in the same words — one spelling of "a run is going" for the whole app.
-    """
-    return update_offer.run_is_going()
-
-
 def build(
     speed_percent: int,
     theme_key: str,
@@ -72,7 +63,7 @@ def build(
     `offer` is the one the bar on Home reads. A check made here goes through it,
     so what this screen finds is already on offer by the time the user hops back.
     """
-    locked = is_running()
+    locked = engine.a_run_is_going()
     offer = offer if offer is not None else update_offer.current()
 
     with ui.column().classes("w-full items-stretch gap-6 p-8"):

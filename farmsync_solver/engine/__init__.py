@@ -15,7 +15,16 @@ from . import run
 from .run import Engine
 from .snapshot import AccountRow, Result, RunSnapshot, RunState
 
-__all__ = ["AccountRow", "Engine", "Result", "RunSnapshot", "RunState", "current", "run"]
+__all__ = [
+    "AccountRow",
+    "Engine",
+    "Result",
+    "RunSnapshot",
+    "RunState",
+    "a_run_is_going",
+    "current",
+    "run",
+]
 
 _current: Engine | None = None
 
@@ -26,3 +35,18 @@ def current() -> Engine:
     if _current is None:
         _current = Engine()
     return _current
+
+
+def a_run_is_going() -> bool:
+    """Whether there is a run on right now, for the parts of the UI that only care.
+
+    A bool, not a snapshot: the close question and the update offer have no
+    business knowing what a run is made of. The rule itself is
+    `RunSnapshot.is_running`; this only asks the engine on the app's behalf.
+
+    Two ways to put something else behind it, and they are not interchangeable.
+    `CloseQuestion` and `UpdateOffer` bind it as a default argument at import,
+    so a test hands them `is_running=lambda: True` instead. Settings calls it
+    through this module every time it draws, so a test patches it here.
+    """
+    return current().snapshot().is_running

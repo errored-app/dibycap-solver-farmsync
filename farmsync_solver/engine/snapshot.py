@@ -37,7 +37,7 @@ class RunState(str, Enum):
     RESTING = "resting"
     # The solve service is down and the run is sitting it out (ADR 0003). It is a
     # run like any other: Stop works, the close question is asked, no update is
-    # offered — every "is a run on?" test in the UI reads `is not IDLE`.
+    # offered — `RunSnapshot.is_running` is what says so, for every caller.
     WAITING = "waiting"
     STOPPING = "stopping"
 
@@ -100,6 +100,16 @@ class RunSnapshot:
     # has a knock out: that is the one moment with nothing to count down to.
     seconds_left: int | None = None
     seconds_waited: float = 0.0
+
+    @property
+    def is_running(self) -> bool:
+        """Whether a run is on: every state but Idle is one.
+
+        The whole app asks this — the close question, the update offer, Settings'
+        lock, the Home button — and it is worked out here so a state added to
+        `RunState` later cannot be missed by one of them.
+        """
+        return self.state is not RunState.IDLE
 
 
 @dataclass(frozen=True)

@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from nicegui.testing import User
 
-from farmsync_solver import config, keys, looks
+from farmsync_solver import config, engine, keys, looks
 from farmsync_solver._version import VERSION
 from farmsync_solver.ui import messages, settings, theme
 
@@ -154,7 +154,7 @@ async def test_a_run_does_not_lock_the_theme(
     user: User, saved_keys: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """ADR 0004: keys and Speed change what a run does. A theme changes paint."""
-    monkeypatch.setattr(settings, "is_running", lambda: True)
+    monkeypatch.setattr(engine, "a_run_is_going", lambda: True)
 
     await _open_settings(user)
     user.find(marker="theme-handheld").click()
@@ -195,7 +195,7 @@ async def test_cancelling_forget_keeps_the_keys(user: User, saved_keys: Path) ->
 async def test_a_run_locks_the_keys_and_speed_but_leaves_the_screen_readable(
     user: User, saved_keys: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(settings, "is_running", lambda: True)
+    monkeypatch.setattr(engine, "a_run_is_going", lambda: True)
 
     await _open_settings(user)
 
@@ -272,9 +272,7 @@ async def test_the_support_buttons_stay_live_during_a_run(
     user: User, saved_keys: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Spec 8.5: trouble is exactly when these are reached for."""
-    from farmsync_solver.ui import settings
-
-    monkeypatch.setattr(settings, "is_running", lambda: True)
+    monkeypatch.setattr(engine, "a_run_is_going", lambda: True)
     await _open_settings(user)
 
     for marker in ("copy-diagnostics", "open-logs"):

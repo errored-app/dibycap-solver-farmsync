@@ -81,21 +81,12 @@ def update_bar(update: Update | None, stage: UpdateStage, fraction: float = 0.0)
     )
 
 
-def run_is_going() -> bool:
-    """The app's answer to whether an install may go ahead, and the offer's default.
-
-    A bool, not a snapshot: the offer has no business knowing what a run is made
-    of, and a test that wants a locked offer says `is_running=lambda: True`.
-    """
-    return engine.current().snapshot().state is not engine.RunState.IDLE
-
-
 class UpdateOffer:
     """One update on offer, from the check that found it to the app closing."""
 
     def __init__(
         self,
-        is_running: Callable[[], bool] = run_is_going,
+        is_running: Callable[[], bool] = engine.a_run_is_going,
         install: Callable[[Path], Any] = updater.install,
         shutdown: Callable[[], Any] = native_app.shutdown,
         off_thread: Callable[..., Awaitable[Any]] = run.io_bound,

@@ -171,7 +171,7 @@ def panel_of(snapshot: RunSnapshot, can_start: bool) -> Panel:
     there is nothing to count, a bar while accounts are being worked through, and
     neither during the rest, whose countdown is words already.
     """
-    idle = snapshot.state is RunState.IDLE
+    idle = not snapshot.is_running
     return Panel(
         button=_button_text(snapshot.state),
         button_enabled=can_start if idle else snapshot.state is not RunState.STOPPING,
@@ -369,7 +369,7 @@ class _Screen:
 
     def press(self) -> None:
         """One button, both jobs (spec 4.2). Idle starts a run; a run is stopped."""
-        if self._worker.snapshot().state is RunState.IDLE:
+        if not self._worker.snapshot().is_running:
             self._rows.clear()  # a fresh start shows a fresh table (spec 5.2)
             self._round_shown = 0
             self._worker.start(self._api_key, self._farm_token, self._speed_percent)
